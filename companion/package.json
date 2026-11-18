@@ -1,0 +1,1 @@
+{"name":"cartoon-watch-companion","version":"0.3.0","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"setup":"playwright install chromium","start":"node server.mjs","check":"node --check server.mjs && node --check runtime.mjs && node --check service.mjs && node --check capture.mjs","test":"node --test test.mjs"},"dependencies":{"playwright":"1.65.1"}}

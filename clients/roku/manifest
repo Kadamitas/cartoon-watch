@@ -1,0 +1,14 @@
+title=Cartoon Watch
+major_version=0
+minor_version=3
+build_version=00000
+ui_resolutions=fhd
+mm_icon_focus_hd=pkg:/images/channel.png
+mm_icon_side_hd=pkg:/images/channel.png
+splash_screen_fhd=pkg:/images/splash.png
+splash_color=#0B0D14
+splash_min_time=0
+bs_const=DEBUG=false
+supports_voice_roinput=1
+supports_etc_seek=1
+supports_etc_next=1

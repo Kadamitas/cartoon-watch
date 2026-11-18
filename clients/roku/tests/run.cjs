@@ -1,0 +1,8 @@
+const { spawnSync } = require('node:child_process')
+const path = require('node:path')
+const root = path.resolve(__dirname, '..')
+const interpreter = require.resolve('@rokucommunity/brs/bin/cli.js')
+const result = spawnSync(process.execPath, [interpreter, '--root', __dirname, path.join(root, 'components/CartoonWatch.brs'), path.join(__dirname, 'transport.brs')], { encoding: 'utf8', cwd: root })
+process.stdout.write(result.stdout || '')
+process.stderr.write(result.stderr || '')
+if (result.status !== 0 || !result.stdout.includes('ROKU_LOGIC_PASS') || result.stdout.includes('FAIL:')) process.exit(1)

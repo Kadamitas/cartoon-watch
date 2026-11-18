@@ -1,0 +1,15 @@
+{
+  "id": "tv.cartoonwatch.webos",
+  "version": "0.3.0",
+  "vendor": "Cartoon Watch",
+  "type": "web",
+  "main": "index.html",
+  "title": "Cartoon Watch",
+  "icon": "icon.png",
+  "largeIcon": "large-icon.png",
+  "resolution": "1920x1080",
+  "bgColor": "#0b0d14",
+  "iconColor": "#111623",
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": true
+}

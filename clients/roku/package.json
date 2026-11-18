@@ -1,0 +1,15 @@
+{
+  "name": "cartoon-watch-roku",
+  "private": true,
+  "version": "0.3.0",
+  "scripts": {
+    "check": "bsc --project bsconfig.json && node tests/run.cjs"
+  },
+  "devDependencies": {
+    "@rokucommunity/brs": "0.47.6",
+    "brighterscript": "0.73.8"
+  },
+  "overrides": {
+    "decode-uri-component": "0.5.1"
+  }
+}
