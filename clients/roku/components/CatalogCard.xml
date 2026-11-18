@@ -7,9 +7,9 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/components/CatalogCard.brs" />
   <children>
-    <Rectangle id="frame" width="344" height="225" color="#253045" />
-    <Rectangle translation="[4,4]" width="336" height="217" color="#141D2B" />
-    <Poster id="poster" translation="[4,4]" width="336" height="164" loadDisplayMode="scaleToZoom" uri="pkg:/images/card.png" />
-    <Label id="title" translation="[12,174]" width="320" height="44" numLines="2" wrap="true" font="font:SmallBoldSystemFont" color="#E6E9EF" />
+    <Rectangle id="frame" width="344" height="364" color="#253045" />
+    <Rectangle translation="[4,4]" width="336" height="356" color="#141D2B" />
+    <Poster id="poster" translation="[70,4]" width="204" height="306" loadDisplayMode="scaleToFit" uri="pkg:/images/card.png" />
+    <Label id="title" translation="[12,312]" width="320" height="48" numLines="2" wrap="true" font="font:SmallBoldSystemFont" color="#E6E9EF" />
   </children>
 </component>

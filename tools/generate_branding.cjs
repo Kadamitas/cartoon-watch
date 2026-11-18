@@ -9,7 +9,7 @@ const glyphs = {
     O: "M3 1H6Q8 1 8 3V9Q8 11 6 11H3Q1 11 1 9V3Q1 1 3 1Z", N: "M1 11V1L8 11V1",
     W: "M0 1L2 11L5 5L8 11L10 1", H: "M1 1V11M8 1V11M1 6H8"
 };
-function group(children, x = 0, y = 0, scale = 1) { return { children, x, y, scale }; }
+function group(children, x = 0, y = 0, scale = 1, scaleY = scale) { return { children, x, y, scale, scaleY }; }
 function shape(d, fill, stroke, width = 0) { return { d, fill, stroke, width }; }
 function mark() {
     return [group([shape(c, navy, "#070A11", 22), shape(w, navy, "#070A11", 22)], 3, 10),
@@ -37,12 +37,15 @@ function scene(width, height, square = false) {
     }
     return objects;
 }
+function televisionScene(width, height) {
+    return [shape(`M0 0H${width}V${height}H0Z`, navy), group([group(mark(), 12, 8, 1.12, .88)], 0, 0, width / 320)];
+}
 function svg(objects, width, height) {
-    const draw = nodes => nodes.map(n => n.children ? `<g transform="translate(${n.x} ${n.y}) scale(${n.scale})">${draw(n.children)}</g>` : `<path d="${n.d}" fill="${n.fill}"${n.stroke ? ` stroke="${n.stroke}" stroke-width="${n.width}" stroke-linejoin="round" stroke-linecap="round"` : ""}/>`).join("");
+    const draw = nodes => nodes.map(n => n.children ? `<g transform="translate(${n.x} ${n.y}) scale(${n.scale}${n.scaleY === n.scale ? "" : " " + n.scaleY})">${draw(n.children)}</g>` : `<path d="${n.d}" fill="${n.fill}"${n.stroke ? ` stroke="${n.stroke}" stroke-width="${n.width}" stroke-linejoin="round" stroke-linecap="round"` : ""}/>`).join("");
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${draw(objects)}</svg>\n`;
 }
 function vector(objects, width, height) {
-    const draw = (nodes, indent) => nodes.map(n => n.children ? `${indent}<group android:translateX="${n.x}" android:translateY="${n.y}" android:scaleX="${n.scale}" android:scaleY="${n.scale}">\n${draw(n.children, indent + "    ")}\n${indent}</group>` : `${indent}<path android:pathData="${n.d}" android:fillColor="${n.fill === "none" ? "#00000000" : n.fill}"${n.stroke ? ` android:strokeColor="${n.stroke}" android:strokeWidth="${n.width}" android:strokeLineJoin="round" android:strokeLineCap="round"` : ""} />`).join("\n");
+    const draw = (nodes, indent) => nodes.map(n => n.children ? `${indent}<group android:translateX="${n.x}" android:translateY="${n.y}" android:scaleX="${n.scale}" android:scaleY="${n.scaleY}">\n${draw(n.children, indent + "    ")}\n${indent}</group>` : `${indent}<path android:pathData="${n.d}" android:fillColor="${n.fill === "none" ? "#00000000" : n.fill}"${n.stroke ? ` android:strokeColor="${n.stroke}" android:strokeWidth="${n.width}" android:strokeLineJoin="round" android:strokeLineCap="round"` : ""} />`).join("\n");
     return `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="${width}dp" android:height="${height}dp" android:viewportWidth="${width}" android:viewportHeight="${height}">\n${draw(objects, "    ")}\n</vector>\n`;
 }
 function write(file, data) {
@@ -55,17 +58,18 @@ function write(file, data) {
     write("branding/banner.svg", svg(scene(320, 180), 320, 180));
     write("app/src/main/res/drawable/cw_launcher.xml", vector(scene(108, 108, true), 108, 108));
     write("app/src/main/res/drawable/cw_banner.xml", vector(scene(320, 180), 320, 180));
+    write("app/src/main/res/drawable-television/cw_launcher.xml", vector(televisionScene(320, 180), 320, 180));
     const edge = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
     const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || (process.platform === "win32" && fs.existsSync(edge) ? edge : undefined) });
     try {
         const page = await browser.newPage({ deviceScaleFactor: 1 });
-        for (const [file, width, height, square] of [
+        for (const [file, width, height, square, television] of [
             ["branding/icon-80.png", 80, 80, true], ["branding/icon-128.png", 128, 128, true], ["branding/icon-130.png", 130, 130, true],
             ["clients/roku/images/channel.png", 540, 405], ["clients/roku/images/card.png", 336, 164], ["clients/roku/images/splash.png", 1920, 1080],
-            ["outputs/Cartoon-Watch-Icon.png", 512, 512, true], ["outputs/Cartoon-Watch-Banner.png", 960, 540]
+            ["outputs/Cartoon-Watch-Icon.png", 512, 512, true], ["outputs/Cartoon-Watch-Banner.png", 960, 540], ["outputs/Cartoon-Watch-TV-Icon.png", 960, 540, false, true]
         ]) {
             await page.setViewportSize({ width, height });
-            await page.setContent(`<style>html,body{margin:0;width:100%;height:100%;overflow:hidden}svg{display:block}</style>${svg(scene(width, height, square), width, height)}`);
+            await page.setContent(`<style>html,body{margin:0;width:100%;height:100%;overflow:hidden}svg{display:block}</style>${svg(television ? televisionScene(width, height) : scene(width, height, square), width, height)}`);
             write(file, await page.screenshot({ type: "png", animations: "disabled" }));
         }
     } finally { await browser.close(); }

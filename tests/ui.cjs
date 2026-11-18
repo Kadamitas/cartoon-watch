@@ -39,17 +39,18 @@ function catalog(args = {}) {
     });
     await context.route('https://app.cartoonwatch.test/**', route => {
       const name = new URL(route.request().url()).pathname.slice(1) || 'index.html';
-      if (!['index.html', 'app.js', 'app.css', 'brand.svg'].includes(name)) return route.abort();
+      if (!['index.html', 'app.js', 'app.css', 'brand.svg', 'discovery.js'].includes(name)) return route.abort();
       return route.fulfill({ contentType: name.endsWith('.js') ? 'application/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.svg') ? 'image/svg+xml' : 'text/html', body: fs.readFileSync(path.join(base, 'app/src/main/assets', name)) });
     });
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('https://app.cartoonwatch.test/');
-    await page.getByRole('button', { name: 'Browse full catalog', exact: true }).waitFor();
+    await page.locator('.discovery-shortcuts').waitFor();
     assert.equal(await page.locator('.brand-mark').evaluate(image => image.complete && image.naturalWidth > 0), true);
-    assert.equal(await page.locator('#providers button').count(), 1);
-    assert.match(await page.locator('.catalog-summary').innerText(), new RegExp(index.items.length.toLocaleString('en-US') + ' indexed titles'));
-    await page.getByRole('button', { name: 'Browse full catalog', exact: true }).click();
+    assert.equal(await page.getByRole('button',{name:'Search',exact:true}).count(), 1);
+    assert.equal(await page.locator('.topbar,#providers,.catalog-summary').count(),0);
+    assert(!/indexed titles|16,167/.test(await page.locator('#content').innerText()));
+    await page.getByRole('button',{name:'Search',exact:true}).click();
     await page.waitForFunction(() => document.querySelectorAll('.grid .card').length === 60);
     assert.match(await page.locator('.catalog-result-count').innerText(), new RegExp('1–60 of ' + index.items.length.toLocaleString('en-US')));
     const first = await page.locator('.grid .card-title').first().innerText();
@@ -91,7 +92,7 @@ function catalog(args = {}) {
     await page.waitForTimeout(140);
     assert.equal(await page.locator('.grid .card-title').evaluateAll(nodes => nodes.every(n => /avatar/i.test(n.textContent))), true);
     await page.locator('[data-route="home"]').click();
-    await page.getByRole('button', { name: 'Browse full catalog', exact: true }).waitFor();
+    await page.locator('.discovery-shortcuts').waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     assert.equal(errors.length, 0);
     assert.ok(requests.filter(r => r.action === 'catalog').every(r => r.args.limit === 60));

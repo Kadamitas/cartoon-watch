@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET = ROOT / 'app/src/main/assets/catalog-index.json'
 CACHE = ROOT / 'work/artwork'
 ANIME_URL = 'https://github.com/cedya77/anime-offline-database/releases/download/latest/anime-offline-database-minified.json'
-USER_AGENT = 'CartoonWatch/0.4 artwork metadata (https://github.com/Kadamitas/cartoon-watch)'
+USER_AGENT = 'CartoonWatch/0.5 artwork metadata (https://github.com/Kadamitas/cartoon-watch)'
 FIELDS = ('image', 'imageSource', 'imageSourceUrl', 'imageAttribution')
 BRANDS = {
     'cdn.myanimelist.net': ('MyAnimeList', ('myanimelist.net',)),
@@ -123,7 +123,7 @@ def anime_image(item):
     if host not in BRANDS or urlsplit(image).scheme != 'https':
         return None
     if host == 'cdn.myanimelist.net':
-        image = item['picture'].replace('/images/', '/r/160x225/images/', 1)
+        image = re.sub(r'^(https://cdn\.myanimelist\.net)(?:/r/\d+x\d+)?/images/', r'\1/r/300x450/images/', item['picture'])
     brand, domains = BRANDS[host]
     source = next((url for url in item['sources'] if any((urlsplit(url).hostname or '').removeprefix('www.') == domain for domain in domains)), 'https://github.com/cedya77/anime-offline-database')
     return dict(zip(FIELDS, (image, brand, source, ANIME_CREDIT)))

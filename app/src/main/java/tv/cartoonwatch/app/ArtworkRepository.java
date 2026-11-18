@@ -48,7 +48,7 @@ public final class ArtworkRepository extends SQLiteOpenHelper {
     private int writes;
 
     public ArtworkRepository(Context context) {
-        super(context,"artwork.db",null,1);
+        super(context,"artwork-v2.db",null,1);
         directory=new File(context.getCacheDir(),"artwork");
         directory.mkdirs();
         setWriteAheadLoggingEnabled(true);
@@ -64,30 +64,39 @@ public final class ArtworkRepository extends SQLiteOpenHelper {
         for(int i=0;i<requested.length()&&i<12;i++) {
             JSONObject item=requested.optJSONObject(i);
             if(item==null)continue;
-            String output=item.optString("url"),target=target(item);
-            if(output.length()>2048||!seen.add(output))continue;
-            if(target.isEmpty()) { found.put(result(output,null));continue; }
-            JSONObject saved=stored(target),value=saved,input=provided(item);
-            if(input!=null)value=input;
-            if(value!=null&&!value.optString("image").isEmpty()&&exists(value.optString("image"))) { found.put(result(output,value));continue; }
-            if(saved!=null&&saved.optLong("retry")>System.currentTimeMillis()&&(input==null||input.optString("image").equals(saved.optString("image")))) { found.put(result(output,null));continue; }
-            enqueue(target,value);
-            waiting.put(output);
+            String output=item.optString("url"),target=target(item),variant=variant(item),key=variant+"\n"+target;
+            if(output.length()>2048||!seen.add(variant+"\n"+output))continue;
+            if(target.isEmpty()) { found.put(result(output,variant,null));continue; }
+            JSONObject saved=stored(key),input=provided(item,variant),value=preferred(saved,input,variant);
+            if(value!=null&&!value.optString("image").isEmpty()&&exists(value.optString("image"),variant)) { found.put(result(output,variant,value));continue; }
+            if("backdrop".equals(variant)&&(value==null||value.optString("image").isEmpty())) {found.put(result(output,variant,null));continue;}
+            if(saved!=null&&saved.optLong("retry")>System.currentTimeMillis()&&(value==null||value.optString("image").equals(saved.optString("image")))) { found.put(result(output,variant,null));continue; }
+            enqueue(key,target,variant,value);
+            waiting.put(new JSONObject().put("url",output).put("variant",variant));
         }
         return new JSONObject().put("items",found).put("pending",waiting).put("retryAfter",1000);
     }
 
-    private static JSONObject result(String url,JSONObject value) throws Exception {
-        JSONObject result=new JSONObject().put("url",url).put("image","");
-        if(value!=null)result.put("image",ORIGIN+"art/"+hash(value.optString("image"))+".jpg").put("imageSource",value.optString("imageSource")).put("imageSourceUrl",value.optString("imageSourceUrl")).put("imageAttribution",value.optString("imageAttribution"));
+    private static JSONObject result(String url,String variant,JSONObject value) throws Exception {
+        JSONObject result=new JSONObject().put("url",url).put("image","").put("variant",variant);
+        if(value!=null)result.put("image",ORIGIN+"art/"+fileKey(value.optString("image"),variant)+".jpg").put("imageSource",value.optString("imageSource")).put("imageSourceUrl",value.optString("imageSourceUrl")).put("imageAttribution",value.optString("imageAttribution"));
         return result;
     }
 
-    private static JSONObject provided(JSONObject item) throws Exception {
-        String image=imageUrl(item.optString("image"));
+    private static JSONObject provided(JSONObject item,String variant) throws Exception {
+        boolean backdrop="backdrop".equals(variant);String prefix=backdrop?"backdrop":"image";
+        String image=backdrop?TrendingRepository.animeImage(item.optString("backdrop"),true):imageUrl(item.optString("image"));
         if(image.isEmpty())return null;
-        return new JSONObject().put("image",image).put("imageSource",limited(item.optString("imageSource"),120)).put("imageSourceUrl",limited(item.optString("imageSourceUrl"),2048)).put("imageAttribution",limited(item.optString("imageAttribution"),300));
+        return new JSONObject().put("image",image).put("imageSource",limited(item.optString(prefix+"Source"),120)).put("imageSourceUrl",limited(item.optString(prefix+"SourceUrl"),2048)).put("imageAttribution",limited(item.optString(prefix+"Attribution"),300));
     }
+
+    private static JSONObject preferred(JSONObject saved,JSONObject input,String variant) {
+        if(input==null)return saved;
+        if(saved!=null&&"poster".equals(variant)&&input.optString("imageSourceUrl").equals(saved.optString("imageSourceUrl"))&&TrendingRepository.posterSize(input.optString("image"))>0&&TrendingRepository.posterSize(saved.optString("image"))>TrendingRepository.posterSize(input.optString("image")))return saved;
+        return input;
+    }
+
+    private static String variant(JSONObject item){return "backdrop".equals(item.optString("variant"))?"backdrop":"poster";}
 
     private static String limited(String value,int size) { return value.length()>size?value.substring(0,size):value; }
 
@@ -97,7 +106,7 @@ public final class ArtworkRepository extends SQLiteOpenHelper {
     }
 
     private static String imageUrl(String value) {
-        try { URI uri=new URI(value);String host=uri.getHost();return value.length()<=2048&&"https".equals(uri.getScheme())&&uri.getUserInfo()==null&&uri.getPort()==-1&&host!=null&&IMAGE_HOSTS.contains(host.toLowerCase(Locale.US))&&!value.contains("no_pic")?uri.toASCIIString():""; } catch(Exception e) { return ""; }
+        try { URI uri=new URI(value);String host=uri.getHost();if(value.length()>2048||!"https".equals(uri.getScheme())||uri.getUserInfo()!=null||uri.getPort()!=-1||host==null||!IMAGE_HOSTS.contains(host.toLowerCase(Locale.US))||value.contains("no_pic"))return "";String result=uri.toASCIIString();return "cdn.myanimelist.net".equalsIgnoreCase(host)?result.replace("/r/160x225/images/","/r/300x450/images/"):result; } catch(Exception e) { return ""; }
     }
 
     private synchronized JSONObject stored(String url) throws Exception {
@@ -115,10 +124,10 @@ public final class ArtworkRepository extends SQLiteOpenHelper {
         if(++writes%32==0)db.execSQL("DELETE FROM artwork WHERE url IN (SELECT url FROM artwork ORDER BY checked DESC LIMIT -1 OFFSET 4096)");
     }
 
-    private void enqueue(String url,JSONObject known) {
-        if(closed||!pending.add(url))return;
-        try { workers.execute(() -> { JSONObject value=null;try {value=known!=null&&!known.optString("image").isEmpty()?known:resolve(url);if(value!=null)thumbnail(value.getString("image"));remember(url,value,false);} catch(Exception error) {try{remember(url,value,true);}catch(Exception ignored){}} finally {pending.remove(url);} }); }
-        catch(java.util.concurrent.RejectedExecutionException e) { pending.remove(url); }
+    private void enqueue(String key,String url,String variant,JSONObject known) {
+        if(closed||!pending.add(key))return;
+        try { workers.execute(() -> { JSONObject value=null;try {value=known!=null&&!known.optString("image").isEmpty()?known:"poster".equals(variant)?resolve(url):null;if(value!=null)thumbnail(value.getString("image"),variant);remember(key,value,false);} catch(Exception error) {try{remember(key,value,true);}catch(Exception ignored){}} finally {pending.remove(key);} }); }
+        catch(java.util.concurrent.RejectedExecutionException e) { pending.remove(key); }
     }
 
     static JSONObject poster(String html,String url) throws Exception {
@@ -132,10 +141,14 @@ public final class ArtworkRepository extends SQLiteOpenHelper {
     private JSONObject resolve(String url) throws Exception { return poster(new String(fetch(url,786432,false),"UTF-8"),url); }
 
     private static byte[] fetch(String initial,int limit,boolean image) throws Exception {
+        return fetch(initial,limit,image,false);
+    }
+
+    private static byte[] fetch(String initial,int limit,boolean image,boolean backdrop) throws Exception {
         String url=initial;long end=System.currentTimeMillis()+6000;
         for(int redirect=0;redirect<4;redirect++) {
             if(Thread.currentThread().isInterrupted()||System.currentTimeMillis()>end)throw new java.io.IOException("Artwork request expired");
-            if(image&&imageUrl(url).isEmpty())throw new java.io.IOException("Unsupported artwork host");
+            if(image&&(imageUrl(url).isEmpty()||backdrop&&TrendingRepository.animeImage(url,true).isEmpty()))throw new java.io.IOException("Unsupported artwork host");
             if(!image&&target(new JSONObject().put("url",url)).isEmpty())throw new java.io.IOException("Unsupported title host");
             HttpURLConnection connection=(HttpURLConnection)new URL(url).openConnection();
             connection.setConnectTimeout(2200);connection.setReadTimeout(2600);connection.setInstanceFollowRedirects(false);connection.setRequestProperty("User-Agent","CartoonWatch/0.4 (local TV artwork; bounded cache)");connection.setRequestProperty("Accept",image?"image/jpeg,image/png,image/webp":"text/html");connection.setRequestProperty("Accept-Encoding","gzip");
@@ -155,35 +168,41 @@ public final class ArtworkRepository extends SQLiteOpenHelper {
     }
 
     private static String hash(String value) throws Exception {byte[] bytes=MessageDigest.getInstance("SHA-256").digest(value.getBytes("UTF-8"));String alphabet="0123456789abcdef";StringBuilder result=new StringBuilder(64);for(byte b:bytes)result.append(alphabet.charAt((b&255)>>>4)).append(alphabet.charAt(b&15));return result.toString();}
+    private static String fileKey(String image,String variant) throws Exception {return hash("v2\n"+variant+"\n"+image);}
 
-    private boolean exists(String image) throws Exception { synchronized(files) {File file=new File(directory,hash(image)+".jpg");if(!file.isFile())return false;file.setLastModified(System.currentTimeMillis());return true;} }
+    private boolean exists(String image,String variant) throws Exception { synchronized(files) {File file=new File(directory,fileKey(image,variant)+".jpg");if(!file.isFile())return false;file.setLastModified(System.currentTimeMillis());return true;} }
 
-    private void thumbnail(String image) throws Exception {
-        if(exists(image))return;
-        byte[] bytes=fetch(image,524288,true);
+    private void thumbnail(String image,String variant) throws Exception {
+        if(exists(image,variant))return;
+        boolean backdrop="backdrop".equals(variant);
+        if(backdrop&&TrendingRepository.animeImage(image,true).isEmpty())throw new java.io.IOException("Unsupported backdrop");
+        byte[] bytes=fetch(image,1048576,true,backdrop);
         BitmapFactory.Options options=new BitmapFactory.Options();options.inJustDecodeBounds=true;BitmapFactory.decodeByteArray(bytes,0,bytes.length,options);
         if(options.outWidth<=0||options.outHeight<=0||options.outWidth>20000||options.outHeight>20000)throw new java.io.IOException("Invalid artwork dimensions");
-        options.inSampleSize=sampleSize(options.outWidth,options.outHeight);
-        options.inJustDecodeBounds=false;options.inPreferredConfig=Bitmap.Config.RGB_565;
+        if(backdrop&&options.outWidth*3<options.outHeight*4)throw new java.io.IOException("Backdrop is not landscape artwork");
+        options.inSampleSize=sampleSize(options.outWidth,options.outHeight,backdrop);
+        options.inJustDecodeBounds=false;options.inPreferredConfig=Bitmap.Config.ARGB_8888;
         Bitmap decoded=BitmapFactory.decodeByteArray(bytes,0,bytes.length,options),scaled=null;
         if(decoded==null)throw new java.io.IOException("Artwork could not be decoded");
-        File temporary=new File(directory,hash(image)+"-"+System.nanoTime()+".tmp");
+        File temporary=new File(directory,fileKey(image,variant)+"-"+System.nanoTime()+".tmp");
         try {
-            int[] size=dimensions(decoded.getWidth(),decoded.getHeight());
+            int[] size=dimensions(decoded.getWidth(),decoded.getHeight(),backdrop);
             scaled=size[0]!=decoded.getWidth()||size[1]!=decoded.getHeight()?Bitmap.createScaledBitmap(decoded,size[0],size[1],true):decoded;
-            try(FileOutputStream output=new FileOutputStream(temporary)) {if(!scaled.compress(Bitmap.CompressFormat.JPEG,65,output))throw new java.io.IOException("Artwork could not be stored");}
-            synchronized(files) {File destination=new File(directory,hash(image)+".jpg");if(destination.isFile())temporary.delete();else if(!temporary.renameTo(destination))throw new java.io.IOException("Artwork could not be stored");trim();}
+            try(FileOutputStream output=new FileOutputStream(temporary)) {if(!scaled.compress(Bitmap.CompressFormat.JPEG,75,output))throw new java.io.IOException("Artwork could not be stored");}
+            synchronized(files) {File destination=new File(directory,fileKey(image,variant)+".jpg");if(destination.isFile())temporary.delete();else if(!temporary.renameTo(destination))throw new java.io.IOException("Artwork could not be stored");trim();}
         } finally {temporary.delete();if(scaled!=null&&scaled!=decoded)scaled.recycle();decoded.recycle();}
     }
 
-    static int sampleSize(int width,int height) {int sample=1;while(width/sample>480||height/sample>720)sample*=2;return sample;}
-    static int[] dimensions(int width,int height) {float factor=Math.min(1f,Math.min(240f/width,360f/height));return new int[]{Math.max(1,Math.round(width*factor)),Math.max(1,Math.round(height*factor))};}
+    static int sampleSize(int width,int height) {return sampleSize(width,height,false);}
+    static int sampleSize(int width,int height,boolean backdrop) {int sample=1;while(width/sample>(backdrop?1920:640)||height/sample>(backdrop?1080:960))sample*=2;return sample;}
+    static int[] dimensions(int width,int height) {return dimensions(width,height,false);}
+    static int[] dimensions(int width,int height,boolean backdrop) {float factor=Math.min(1f,Math.min((backdrop?960f:320f)/width,(backdrop?540f:480f)/height));return new int[]{Math.max(1,Math.round(width*factor)),Math.max(1,Math.round(height*factor))};}
 
     private void trim() {
         File[] entries=directory.listFiles((dir,name)->name.matches("[a-f0-9]{64}\\.jpg"));if(entries==null)return;
         List<File> ordered=new ArrayList<>(Arrays.asList(entries));Collections.sort(ordered,(a,b)->Long.compare(a.lastModified(),b.lastModified()));
         long size=0;for(File file:ordered)size+=file.length();int count=ordered.size();
-        for(File file:ordered) {if(count<=256&&size<=8388608)break;long length=file.length();if(file.delete()){size-=length;count--;}}
+        for(File file:ordered) {if(count<=256&&size<=16777216)break;long length=file.length();if(file.delete()){size-=length;count--;}}
     }
 
     public WebResourceResponse open(String path) {

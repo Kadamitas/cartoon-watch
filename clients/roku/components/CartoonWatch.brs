@@ -12,6 +12,8 @@ sub init()
     m.skip = m.top.FindNode("skip")
     m.loading = m.top.FindNode("loading")
     m.loadingText = m.top.FindNode("loadingText")
+    m.genreChooser = m.top.FindNode("genreChooser")
+    m.genreList = m.top.FindNode("genres")
     m.registry = CreateObject("roRegistrySection", "CartoonWatch")
     m.service = m.registry.Read("service")
     m.positions = ParseJson(m.registry.Read("positions"))
@@ -21,6 +23,30 @@ sub init()
     m.categories = ["all", "Dubbed anime", "Cartoons", "Subbed anime", "Movies", "OVA"]
     m.categoryNames = ["All categories", "Dubbed anime", "Cartoons", "Subbed anime", "Movies", "OVA"]
     m.category = "all"
+    m.genreKeys = []
+    m.genreNames = []
+    m.cartoonKeys = []
+    m.cartoonNames = []
+    m.discoveryNames = {}
+    m.discoveryTypes = {}
+    registry = ParseJson(ReadAsciiFile("pkg:/source/discovery-categories.json"))
+    if type(registry) = "roAssociativeArray" and type(registry.categories) = "roArray"
+        for each category in registry.categories
+            if category.type = "anime"
+                m.genreKeys.Push(category.key)
+                m.genreNames.Push(category.label)
+            else if category.type = "cartoons"
+                m.cartoonKeys.Push(category.key)
+                m.cartoonNames.Push(category.label)
+            end if
+            m.discoveryNames[category.key] = category.label
+            m.discoveryTypes[category.key] = category.type
+        end for
+    end if
+    m.choiceKeys = m.genreKeys
+    m.mode = "discovery"
+    m.genre = ""
+    m.requestGenre = ""
     m.sort = "az"
     m.query = ""
     m.offset = 0
@@ -29,19 +55,25 @@ sub init()
     m.detailData = invalid
     m.playingEpisode = invalid
     m.intro = invalid
-    m.menu.buttons = ["Browse all", "Search", "Category", "Sort: A-Z", "Previous page", "Next page", "Service address", "Artwork credits"]
+    updateMenu()
     m.menu.ObserveField("buttonSelected", "onMenuSelected")
     m.grid.ObserveField("itemSelected", "onTitleSelected")
     m.episodeList.ObserveField("itemSelected", "onEpisodeSelected")
     m.video.ObserveField("state", "onVideoState")
     m.video.ObserveField("position", "onPosition")
     m.skip.ObserveField("buttonSelected", "onSkipSelected")
+    m.genreList.ObserveField("itemSelected", "onGenreSelected")
     m.menu.SetFocus(true)
     if validService(m.service)
-        loadCatalog()
+        loadDiscovery()
     else
         showKeyboard("service")
     end if
+end sub
+
+sub updateMenu()
+    if m.sort = "az" then label = "Sort: A-Z" else label = "Sort: Z-A"
+    m.menu.buttons = ["Trending this week", "Anime categories", "Cartoon collections", "Movies", "Browse all", "Search", "Catalog type", label, "Previous page", "Next page", "Service address", "Artwork credits"]
 end sub
 
 function validService(value)
@@ -88,6 +120,10 @@ sub onResponse(event)
     end if
     setBusy(false)
     if response.error <> ""
+        if response.action = "discovery"
+            showDiscovery({ items: [], available: false })
+            return
+        end if
         message = response.error
         if Instr(1, LCase(message), "http") > 0 then message = "This title could not be loaded. Try again or choose another title."
         m.status.text = message
@@ -96,6 +132,8 @@ sub onResponse(event)
     end if
     if response.action = "catalog"
         showCatalog(response.data)
+    else if response.action = "discovery"
+        showDiscovery(response.data)
     else if response.action = "details"
         showDetails(response.data)
     else if response.action = "play"
@@ -103,15 +141,35 @@ sub onResponse(event)
     end if
 end sub
 
+sub loadDiscovery(genre = "")
+    m.requestGenre = genre
+    query = invalid
+    if genre <> "" then query = { genre: genre }
+    request("discovery", "/api/trending", query)
+end sub
+
 sub loadCatalog()
     request("catalog", "/api/catalog", { q: m.query, category: m.category, sort: m.sort, offset: m.offset, limit: 60 })
 end sub
 
 sub showCatalog(data)
+    m.mode = "catalog"
+    m.genre = ""
     m.items = data.items
     if type(m.items) <> "roArray" then m.items = []
     m.total = data.total
     if m.total = invalid then m.total = m.items.Count()
+    showItems()
+    label = "WCO catalog"
+    if m.query <> "" then label = "Search: " + m.query
+    if m.query = "" and m.category = "Movies" then label = "Movies"
+    m.heading.text = label
+    first = 0
+    if m.items.Count() > 0 then first = m.offset + 1
+    m.status.text = first.ToStr() + "–" + (m.offset + m.items.Count()).ToStr() + " of " + m.total.ToStr() + " titles · " + categoryName() + Chr(10) + "Left: menu   OK: select   Back: return"
+end sub
+
+sub showItems()
     content = CreateObject("roSGNode", "ContentNode")
     for each item in m.items
         node = content.CreateChild("ContentNode")
@@ -119,15 +177,88 @@ sub showCatalog(data)
         if item.image <> invalid then node.HDPosterUrl = item.image
     end for
     m.grid.content = content
-    label = "WCO catalog"
-    if m.query <> "" then label = "Search: " + m.query
-    m.heading.text = label
-    first = 0
-    if m.items.Count() > 0 then first = m.offset + 1
-    m.status.text = first.ToStr() + "–" + (m.offset + m.items.Count()).ToStr() + " of " + m.total.ToStr() + " titles · " + categoryName() + Chr(10) + "Left: menu   OK: select   Back: return"
+    m.grid.jumpToItem = 0
     m.library.visible = true
     m.detail.visible = false
+    m.genreChooser.visible = false
     if m.items.Count() > 0 then m.grid.SetFocus(true) else m.menu.SetFocus(true)
+end sub
+
+sub showDiscovery(data)
+    if type(data) <> "roAssociativeArray" then data = {}
+    m.mode = "discovery"
+    m.genre = m.requestGenre
+    m.query = ""
+    m.category = "all"
+    m.offset = 0
+    m.items = []
+    limit = 20
+    if m.genre <> "" then limit = 50
+    if type(data.items) = "roArray" and data.available <> false
+        last = data.items.Count() - 1
+        if last >= limit then last = limit - 1
+        for index = 0 to last
+            m.items.Push(data.items[index])
+        end for
+    end if
+    m.total = m.items.Count()
+    m.heading.text = "Trending this week"
+    metric = "AniList activity · last 7 complete days"
+    if m.genre <> ""
+        m.heading.text = "All-time popular · " + genreName(m.genre)
+        metric = "AniList all-time popularity"
+        if m.discoveryTypes[m.genre] = "cartoons"
+            m.heading.text = genreName(m.genre)
+            metric = "Curated picks · TVmaze ratings"
+            if type(data.snapshotAt) = "roString" or type(data.snapshotAt) = "String" then metric += " · " + data.snapshotAt.Left(10)
+        end if
+    else if type(data.periodEnd) = "roString" or type(data.periodEnd) = "String"
+        metric = "AniList activity · 7-day period ending " + data.periodEnd.Left(10)
+    end if
+    if data.stale = true then metric = "Saved feed · " + metric
+    if m.items.Count() = 0
+        metric = "No matching WCO series in this feed."
+        if data.available = false then metric = "Anime feed unavailable."
+    else
+        metric += " · " + m.items.Count().ToStr() + " WCO matches"
+    end if
+    m.status.text = metric + Chr(10) + "Browse all: full catalog   Left: menu   OK: select"
+    showItems()
+end sub
+
+function genreName(key)
+    if m.discoveryNames[key] <> invalid then return m.discoveryNames[key]
+    return "Discovery"
+end function
+
+sub showGenres(kind = "anime")
+    m.choiceKeys = m.genreKeys
+    names = m.genreNames
+    m.top.FindNode("genreHeading").text = "Anime categories"
+    m.top.FindNode("genreHelp").text = "Explore all-time popular anime available in WCO"
+    if kind = "cartoons"
+        m.choiceKeys = m.cartoonKeys
+        names = m.cartoonNames
+        m.top.FindNode("genreHeading").text = "Cartoon collections"
+        m.top.FindNode("genreHelp").text = "Curated picks with dated TVmaze ratings"
+    end if
+    content = CreateObject("roSGNode", "ContentNode")
+    for each name in names
+        content.CreateChild("ContentNode").title = name
+    end for
+    m.genreList.content = content
+    m.genreChooser.visible = true
+    m.library.visible = false
+    m.detail.visible = false
+    m.genreList.SetFocus(true)
+end sub
+
+sub onGenreSelected(event)
+    index = event.GetData()
+    if index < 0 or index >= m.choiceKeys.Count() then return
+    m.genreChooser.visible = false
+    m.library.visible = true
+    loadDiscovery(m.choiceKeys[index])
 end sub
 
 function categoryName()
@@ -140,37 +271,53 @@ end function
 sub onMenuSelected(event)
     index = event.GetData()
     if index = 0
+        loadDiscovery()
+    else if index = 1
+        showGenres()
+    else if index = 2
+        showGenres("cartoons")
+    else if index = 3
+        m.query = ""
+        m.category = "Movies"
+        m.offset = 0
+        loadCatalog()
+    else if index = 4
         m.query = ""
         m.category = "all"
         m.offset = 0
         loadCatalog()
-    else if index = 1
+    else if index = 5
         showKeyboard("search")
-    else if index = 2
+    else if index = 6
         dialog = CreateObject("roSGNode", "StandardMessageDialog")
-        dialog.title = "Category"
+        dialog.title = "WCO catalog type"
         dialog.buttons = m.categoryNames
         dialog.ObserveField("buttonSelected", "onCategorySelected")
         m.top.dialog = dialog
-    else if index = 3
+    else if index = 7
+        if m.mode <> "catalog"
+            showMessage("Catalog sort", "Choose Browse all or Search to sort the WCO catalog.")
+            return
+        end if
         if m.sort = "az" then m.sort = "za" else m.sort = "az"
-        if m.sort = "az" then label = "Sort: A-Z" else label = "Sort: Z-A"
-        m.menu.buttons = ["Browse all", "Search", "Category", label, "Previous page", "Next page", "Service address", "Artwork credits"]
+        updateMenu()
         m.offset = 0
         loadCatalog()
-    else if index = 4
+    else if index = 8
+        if m.mode <> "catalog" then return
         if m.offset > 0
             m.offset = m.offset - 60
             loadCatalog()
         end if
-    else if index = 5
+    else if index = 9
+        if m.mode <> "catalog" then return
         if m.offset + m.items.Count() < m.total
             m.offset = m.offset + 60
             loadCatalog()
         end if
-    else if index = 6
+    else if index = 10
         showKeyboard("service")
-    else if index = 7
+    else if index = 11
         showMessage("Artwork credits", "TVmaze: https://www.tvmaze.com/api" + Chr(10) + "https://creativecommons.org/licenses/by-sa/4.0/" + Chr(10) + "anime-offline-database: cedya77 and manami-project" + Chr(10) + "https://github.com/cedya77/anime-offline-database" + Chr(10) + "https://opendatacommons.org/licenses/odbl/1.0/" + Chr(10) + "https://opendatacommons.org/licenses/dbcl/1.0/" + Chr(10) + "Images belong to their respective owners.")
     end if
 end sub
@@ -219,6 +366,12 @@ sub onKeyboardSelected(event)
         m.service = value
         m.registry.Write("service", value)
         m.registry.Flush()
+        m.query = ""
+        m.category = "all"
+        m.offset = 0
+        dialog.close = true
+        loadDiscovery()
+        return
     else
         m.query = value
     end if
@@ -415,11 +568,26 @@ function onKeyEvent(key, press)
     if m.busy
         if key = "back"
             m.requestId++
-            if m.task <> invalid then m.task.control = "STOP"
+            if m.task <> invalid
+                m.task.UnobserveField("response")
+                m.task.control = "STOP"
+                m.top.RemoveChild(m.task)
+                m.task = invalid
+            end if
             setBusy(false)
+            if m.detail.visible then m.episodeList.SetFocus(true) else m.menu.SetFocus(true)
             return true
         end if
         return true
+    end if
+    if m.genreChooser.visible
+        if key = "back"
+            m.genreChooser.visible = false
+            m.library.visible = true
+            m.menu.SetFocus(true)
+            return true
+        end if
+        return false
     end if
     if m.video.visible
         if key = "back"

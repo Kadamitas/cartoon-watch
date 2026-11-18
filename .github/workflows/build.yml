@@ -25,8 +25,11 @@ jobs:
           java-version: '22'
       - name: Check source and catalog
         run: |
-          python -m py_compile build.py install.py tools/refresh_catalog.py
+          python -m py_compile build.py install.py tools/refresh_catalog.py tools/enrich_artwork.py tools/generate_discovery.py tools/refresh_discovery.py
           python tools/refresh_catalog.py --check
+          python tools/enrich_artwork.py --check
+          python tools/generate_discovery.py --check
+          python tools/refresh_discovery.py --check
       - name: Build and verify APK
         run: python build.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

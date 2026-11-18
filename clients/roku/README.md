@@ -1,6 +1,6 @@
 # Cartoon Watch for Roku
 
-A native SceneGraph channel for current Roku players and Roku TVs running Roku OS 11 or newer. The channel browses the WCO catalog through the computer companion, opens series and episode lists, searches, filters categories, sorts A–Z or Z–A, and remembers playback positions. Only 60 catalog records are requested at a time. Network requests run in a Task so they do not block the remote interface.
+A native SceneGraph channel for current Roku players and Roku TVs running Roku OS 11 or newer. The channel opens with weekly anime discovery and browses the WCO catalog through the computer companion, opens series and episode lists, searches, filters categories, sorts A–Z or Z–A, and remembers playback positions. Only 60 catalog records are requested at a time. Network requests run in a Task so they do not block the remote interface.
 
 Roku cannot run the Android APK or a general website browser. Keep the [companion service](../../companion/) running on a computer on the same home network. It resolves compatible media and streams it to Roku. If the native player rejects a stream, the client asks the companion to try another provider. Provider selection and media links stay internal.
 
@@ -15,6 +15,16 @@ The companion requires Node 22+, Python 3, and a JDK with `java` and `javac` ava
 
 Alternatively, after enabling Developer Mode, explicitly install with `python clients/roku/deploy.py --device YOUR-ROKU-IP --install`. The script builds the ZIP and prompts for the password without echoing it. It uses HTTP Digest authentication. `ROKU_DEV_PASSWORD` may supply the password for your local process; never commit it. Omitting `--install` only builds the package.
 
+## Anime and cartoon discovery
+
+**Trending this week** uses AniList community activity across seven complete UTC days and opens matching WCO series. It is a discovery feed, not a universal count of video views. **Anime categories** reads the shared 20-category registry, with Isekai first and choices such as Battle Shonen, Fighting, Mecha, Magical Girls, Iyashikei, Rom-Com, School Life, and Reverse Isekai. Fighting uses AniList's Martial Arts tag. Results use all-time AniList list popularity and retain up to 50 matched series, including results beyond the first 20.
+
+**Cartoon collections** offers eight curated groups from the same registry: Cartoon essentials, Big adventures, Heroes & team-ups, Mystery cartoons, Adult animation, Weird & funny, Retro cartoons, and Fantasy worlds. Original Teen Titans, Avatar: The Last Airbender, and Scooby-Doo are in essentials; Family Guy and South Park are in Adult animation. These small lists are ordered by real TVmaze ratings, show the snapshot date, and remain separate from AniList popularity. Rating metadata is available under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) with [TVmaze attribution](../../app/src/main/assets/ARTWORK-NOTICE.txt).
+
+Discovery stays separate from the alphabetical catalog. **Browse all**, Search, **Catalog type**, Sort, and catalog pages remain available; **Movies** opens the movie catalog directly. Catalog type includes Dubbed anime, Subbed anime, Cartoons, Movies, and OVA. Page buttons and alphabetical sorting do not reorder a ranked discovery list. When a feed is unavailable or has no matching series, the screen says so and offers Browse all. Cached AniList feeds are marked as saved and retain their original weekly period. Changing the service address starts weekly discovery again.
+
+The companion keeps a bounded 24-hour feed cache and can show a marked saved feed during an outage. It sends no local Roku playback history to AniList. [AniList daily activity](https://docs.anilist.co/reference/object/mediatrend), [popularity](https://docs.anilist.co/reference/object/media), [API terms](https://docs.anilist.co/guide/terms-of-use).
+
 ## Remote and voice
 
 Use arrows and OK to browse. Left from the first card column opens the menu; Right returns to the grid. Back returns from episodes or stops playback. The native video player supplies play/pause, seeking and its caption controls. Press Up when **Skip intro** appears, then OK. Intro skipping is offered only inside an actual interval supplied by a source.
@@ -27,6 +37,6 @@ Catalog cards use small series/movie cover URLs supplied by the companion. **Art
 
 ## Validate on a computer
 
-Run `npm ci` and `npm run check` from `clients/roku`, then run `python clients/roku/tests/test_tooling.py` from the repository root. Validation compiles BrightScript/SceneGraph, executes transport and episode-selection logic in the BrightScript interpreter, checks the archive, and exercises upload against a local Digest-authenticated fixture. No Roku is contacted by these checks.
+Run `npm ci` and `npm run check` from `clients/roku`, then run `python clients/roku/tests/test_tooling.py` from the repository root. Validation compiles BrightScript/SceneGraph, executes transport, episode-selection, and discovery logic in the BrightScript interpreter, checks the archive, and exercises upload against a local Digest-authenticated fixture. Discovery fixtures mock SceneGraph nodes, the registry, and Task responses while executing the production BrightScript and reading the real packaged category registry. They check weekly startup, 20 anime/eight cartoon choices, Fighting and cartoon endpoints, ranking order, the 50-series anime limit, dated TVmaze/source/cache labels, cancellation/stale responses, Movies, and normal catalog search, type, sort, and paging. No Roku is contacted by these checks.
 
 PC validation does not emulate Roku rendering, codecs, spoken voice recognition, or the device installer. Those require a real Roku. This client has not yet been tested on Roku hardware.

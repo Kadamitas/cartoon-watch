@@ -10,6 +10,9 @@ import android.util.JsonReader;
 import java.io.InputStreamReader;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -24,7 +27,7 @@ public final class CatalogIndex extends SQLiteOpenHelper {
     private String version="", generatedAt="";
 
     public CatalogIndex(Context context) {
-        super(context,"catalog.db",null,2);
+        super(context,"catalog.db",null,3);
         this.context=context.getApplicationContext();
         setWriteAheadLoggingEnabled(true);
     }
@@ -32,6 +35,7 @@ public final class CatalogIndex extends SQLiteOpenHelper {
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE titles(id INTEGER PRIMARY KEY,title TEXT NOT NULL,url TEXT NOT NULL UNIQUE,image TEXT NOT NULL,kind TEXT NOT NULL,category TEXT NOT NULL,search_key TEXT NOT NULL,image_source TEXT NOT NULL DEFAULT '',image_source_url TEXT NOT NULL DEFAULT '',image_attribution TEXT NOT NULL DEFAULT '')");
         db.execSQL("CREATE INDEX title_order ON titles(search_key)");
+        db.execSQL("CREATE INDEX title_image_source ON titles(image_source_url)");
         db.execSQL("CREATE TABLE categories(title_id INTEGER NOT NULL,category TEXT NOT NULL,PRIMARY KEY(title_id,category))");
         db.execSQL("CREATE INDEX category_titles ON categories(category,title_id)");
         db.execSQL("CREATE TABLE metadata(name TEXT PRIMARY KEY,value TEXT NOT NULL)");
@@ -44,10 +48,65 @@ public final class CatalogIndex extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE titles ADD COLUMN image_attribution TEXT NOT NULL DEFAULT ''");
             db.delete("metadata","name='version'",null);
         }
+        if(oldVersion<3)db.execSQL("CREATE INDEX IF NOT EXISTS title_image_source ON titles(image_source_url)");
     }
 
-    private static String key(String value) {
+    static String key(String value) {
         return SPACES.matcher(MARKS.matcher(Normalizer.normalize(value,Normalizer.Form.NFKD)).replaceAll("").toLowerCase(Locale.US)).replaceAll(" ").trim();
+    }
+
+    public String version() throws Exception {prepare();return version;}
+
+    public JSONObject cartoon(String url) throws Exception {
+        if(url==null||url.isEmpty()||url.length()>2048)return null;
+        prepare();
+        try(Cursor cursor=getReadableDatabase().rawQuery("SELECT title,url,image,kind,category,image_source,image_source_url,image_attribution FROM titles WHERE url=? AND kind='series' AND id IN (SELECT title_id FROM categories WHERE category='Cartoons') LIMIT 1",new String[]{url})) {return cursor.moveToFirst()?trendItem(cursor):null;}
+    }
+
+    public JSONObject matchTrend(int malId,List<String> aliases,boolean generic) throws Exception {
+        prepare();
+        if(malId>0) {
+            List<JSONObject> exact=trendRows("image_source_url=?",new String[]{"https://myanimelist.net/anime/"+malId},generic);
+            if(!exact.isEmpty())return chooseTrend(exact);
+        }
+        LinkedHashSet<String> variants=new LinkedHashSet<>();
+        String[] suffixes={""," english dubbed"," english subbed"," dubbed"," subbed"," english dub"," english sub"," dub"," sub"};
+        for(String alias:aliases)for(String suffix:suffixes)variants.add(alias+suffix);
+        if(variants.isEmpty())return null;
+        StringBuilder parameters=new StringBuilder();for(String ignored:variants){if(parameters.length()>0)parameters.append(',');parameters.append('?');}
+        List<JSONObject> matches=trendRows("search_key IN ("+parameters+")",variants.toArray(new String[0]),generic);
+        if(malId>0&&!generic)for(Iterator<JSONObject> iterator=matches.iterator();iterator.hasNext();) {
+            String source=iterator.next().optString("imageSourceUrl");
+            if(source.matches("https://myanimelist\\.net/anime/[1-9][0-9]*")&&!source.equals("https://myanimelist.net/anime/"+malId))iterator.remove();
+        }
+        return chooseTrend(matches);
+    }
+
+    private List<JSONObject> trendRows(String filter,String[] args,boolean generic) throws Exception {
+        List<JSONObject> items=new ArrayList<>();
+        String where="kind='series' AND "+filter+" AND id IN (SELECT title_id FROM categories WHERE category IN ('Dubbed anime','Subbed anime'))";
+        try(Cursor cursor=getReadableDatabase().rawQuery("SELECT title,url,image,kind,category,image_source,image_source_url,image_attribution FROM titles WHERE "+where+" LIMIT 9",args)) {
+            while(cursor.moveToNext()) {
+                JSONObject item=trendItem(cursor);
+                if(!generic||!TrendingRepository.hasSeason(item.optString("title")))items.add(item);
+            }
+        }
+        return items;
+    }
+
+    private static JSONObject chooseTrend(List<JSONObject> items) {
+        if(items.isEmpty()||items.size()>8)return null;
+        if(items.size()>1) {
+            String identity=items.get(0).optString("imageSourceUrl");
+            if(!identity.matches("https://myanimelist\\.net/anime/[1-9][0-9]*"))return null;
+            for(JSONObject item:items)if(!identity.equals(item.optString("imageSourceUrl")))return null;
+        }
+        Collections.sort(items,(a,b)->{int language=Boolean.compare("Dubbed anime".equals(b.optString("category")),"Dubbed anime".equals(a.optString("category")));return language!=0?language:a.optString("url").compareTo(b.optString("url"));});
+        return items.get(0);
+    }
+
+    private static JSONObject trendItem(Cursor cursor) throws Exception {
+        return new JSONObject().put("title",cursor.getString(0)).put("url",cursor.getString(1)).put("image",cursor.getString(2)).put("kind",cursor.getString(3)).put("category",cursor.getString(4)).put("provider","wcostream").put("imageSource",cursor.getString(5)).put("imageSourceUrl",cursor.getString(6)).put("imageAttribution",cursor.getString(7));
     }
 
     private synchronized void prepare() throws Exception {

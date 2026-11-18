@@ -1,0 +1,43 @@
+query WeeklyTrend($since: Int!, $until: Int!) {
+  Page(page: 1, perPage: 50) {
+    mediaTrends(date_greater: $since, date_lesser: $until, sort: TRENDING_DESC) {
+      mediaId
+      date
+      trending
+      media {
+        id
+        idMal
+        type
+        status
+        format
+        isAdult
+        seasonYear
+        startDate { year }
+        title { romaji english native }
+        coverImage { medium large }
+        bannerImage
+        synonyms
+        genres
+        trends(perPage: 8, sort: DATE_DESC) {
+          nodes { date trending }
+        }
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              idMal
+              type
+              status
+              format
+              isAdult
+              startDate { year }
+              title { romaji english native }
+              synonyms
+            }
+          }
+        }
+      }
+    }
+  }
+}

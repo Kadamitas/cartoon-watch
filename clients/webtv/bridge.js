@@ -27,8 +27,10 @@
   var address = document.getElementById('cw-tv-service');
   var connection = document.getElementById('cw-tv-connection');
   var connectionButton = document.createElement('button');
-  connectionButton.id = 'cw-tv-connection-button'; connectionButton.type = 'button'; connectionButton.className = 'button ghost'; connectionButton.textContent = 'Connection';
-  document.querySelector('.topbar').appendChild(connectionButton);
+  connectionButton.id = 'cw-tv-connection-button'; connectionButton.type = 'button'; connectionButton.className = 'nav-button'; connectionButton.setAttribute('aria-label', 'Connection'); connectionButton.innerHTML = '<svg aria-hidden="true"><use href="#i-screen"></use></svg><span>Connection</span>';
+  var connectionParent = document.querySelector('.sidebar-bottom') || document.getElementById('navigation') || document.querySelector('.footer') || document.body;
+  var connectionDot = connectionParent.querySelector('.connection-dot');
+  if (connectionDot) connectionParent.replaceChild(connectionButton, connectionDot); else connectionParent.appendChild(connectionButton);
 
   function validService(value) {
     try {
@@ -64,9 +66,9 @@
   function artwork(payload) {
     var saved = frames(), found = [], pending = [];
     (Array.isArray(payload.items) ? payload.items : []).slice(0, 12).forEach(function (item) {
-      var frame = item.kind !== 'series' && item.kind !== 'movie' && saved.find(function (entry) { return entry.url === item.url; });
-      if (frame) found.push({ url: item.url, image: frame.image, resumeFrame: true, imageSource: 'Resume frame', imageSourceUrl: '', imageAttribution: 'Saved from your last paused position' });
-      else { var value = Object.assign({}, item); if (/^data:/.test(value.image || '')) value.image = ''; pending.push(value); }
+      var frame = item.variant !== 'backdrop' && item.kind !== 'series' && item.kind !== 'movie' && saved.find(function (entry) { return entry.url === item.url; });
+      if (frame) found.push({ url: item.url, variant: 'poster', image: frame.image, resumeFrame: true, imageSource: 'Resume frame', imageSourceUrl: '', imageAttribution: 'Saved from your last paused position' });
+      else { var value = Object.assign({}, item); ['image','backdrop'].forEach(function (field) { if (/^data:/.test(value[field] || '')) value[field] = ''; }); pending.push(value); }
     });
     if (!pending.length) return Promise.resolve({ items: found, pending: [], retryAfter: 1000 });
     return call('/api/artwork', { items: pending }).then(function (result) { return { items: found.concat((result.items || []).map(function (item) { return Object.assign({ resumeFrame: false }, item); })), pending: result.pending || [], retryAfter: result.retryAfter || 1000 }; });
@@ -251,7 +253,7 @@
   video.addEventListener('ended', saveProgress);
   video.addEventListener('error', function () { if (active && active.media) status.textContent = 'Playback could not start. Choose Retry or return to the catalog.'; });
   controls.addEventListener('click', function (event) { var button = event.target.closest('button'); if (button) command(button.getAttribute('data-command')); });
-  connectionButton.onclick = showSetup;
+  connectionButton.onclick = function (event) { event.stopImmediatePropagation(); showSetup(); };
   document.getElementById('cw-tv-cancel').onclick = closeSetup;
   document.getElementById('cw-tv-connect').onclick = function () {
     var candidate = validService(address.value); if (!candidate) { connection.textContent = 'Enter an http or https companion address without a password or query.'; return; }
@@ -273,6 +275,7 @@
       var query = '?q=' + encodeURIComponent(payload.query || '') + '&category=' + encodeURIComponent(payload.category || 'all') + '&sort=' + encodeURIComponent(payload.sort || 'az') + '&offset=' + Math.max(0, Number(payload.offset) || 0) + '&limit=' + Math.max(1, Math.min(120, Number(payload.limit) || 60));
       task = call('/api/catalog' + query);
     } else if (action === 'details') task = call('/api/details?url=' + encodeURIComponent(payload.url || ''));
+    else if (action === 'trending') task = call('/api/trending' + (payload.genre ? '?genre=' + encodeURIComponent(payload.genre) : ''));
     else if (action === 'artwork') task = artwork(payload);
     else if (action === 'play') task = startPlayer(payload);
     else task = Promise.reject(new Error('This action is unavailable.'));

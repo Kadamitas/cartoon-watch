@@ -27,176 +27,44 @@ function pageData(args = {}) {
 
 (async () => {
     const edge = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
-    const browser = await chromium.launch({
-        headless: true,
-        executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || (process.platform === "win32" && fs.existsSync(edge) ? edge : undefined)
-    }), results = [];
+    const browser = await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_EXECUTABLE_PATH || (process.platform === "win32" && fs.existsSync(edge) ? edge : undefined)}), results = [];
     try {
-        for (const viewport of [ {
-            width: 640,
-            height: 360
-        }, {
-            width: 960,
-            height: 540
-        }, {
-            width: 1280,
-            height: 720
-        }, {
-            width: 1920,
-            height: 1080
-        }, {
-            width: 3840,
-            height: 2160
-        } ]) {
-            const context = await browser.newContext({
-                viewport: viewport
-            }), errors = [];
-            await context.exposeBinding("fixtureNative", async (_, action, args) => {
-                if (action === "getState") return {
-                    favorites: [],
-                    history: [],
-                    settings: {
-                        provider: "wco",
-                        adBlock: true
-                    }
-                };
-                if (action === "catalog" || action === "home") return pageData(args);
-                return {
-                    ok: true
-                };
-            });
-            await context.addInitScript(() => {
-                window.CartoonWatch = {
-                    request(action, input, id) {
-                        window.fixtureNative(action, JSON.parse(input || "{}")).then(value => window.onNativeResult(id, JSON.stringify(value)));
-                    }
-                };
-            });
+        for (const viewport of [{width:640,height:360},{width:960,height:540},{width:1280,height:720},{width:1920,height:1080},{width:3840,height:2160}]) {
+            const context = await browser.newContext({viewport}), errors = [];
+            await context.exposeBinding("fixtureNative", async (_,action,args) => action === "getState" ? {favorites:[],history:[],settings:{provider:"wco",adBlock:true}} : action === "home" || action === "catalog" ? pageData(args) : {items:[],available:false});
+            await context.addInitScript(() => {window.CartoonWatch={request(action,input,id){window.fixtureNative(action,JSON.parse(input || "{}")).then(value=>window.onNativeResult(id,JSON.stringify(value)));}};});
             await context.route("https://app.cartoonwatch.test/**", route => {
                 const name = new URL(route.request().url()).pathname.slice(1) || "index.html";
-                if (![ "index.html", "app.js", "app.css", "brand.svg" ].includes(name)) return route.abort();
-                return route.fulfill({
-                    contentType: name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : name.endsWith(".svg") ? "image/svg+xml" : "text/html",
-                    body: fs.readFileSync(path.join(assets, name))
-                });
+                if (!["index.html","app.js","app.css","brand.svg","discovery.js"].includes(name)) return route.abort();
+                return route.fulfill({contentType:name.endsWith(".js")?"application/javascript":name.endsWith(".css")?"text/css":name.endsWith(".svg")?"image/svg+xml":"text/html",body:fs.readFileSync(path.join(assets,name))});
             });
-            const page = await context.newPage();
-            page.on("pageerror", error => errors.push(error.message));
-            await page.goto("https://app.cartoonwatch.test/");
-            await page.getByRole("button", {
-                name: "Browse full catalog",
-                exact: true
-            }).waitFor();
-            const measure = async label => page.evaluate(label => {
-                const bounds = node => {
-                    const r = node.getBoundingClientRect();
-                    return {
-                        top: r.top,
-                        left: r.left,
-                        right: r.right,
-                        bottom: r.bottom,
-                        width: r.width,
-                        height: r.height
-                    };
-                };
-                const provider = document.querySelector("#providers button"), focus = document.activeElement, style = getComputedStyle(focus);
-                return {
-                    label: label,
-                    header: bounds(document.querySelector(".topbar")),
-                    wordmark: bounds(document.querySelector(".wordmark")),
-                    provider: bounds(provider),
-                    focus: bounds(focus),
-                    focusRing: parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset),
-                    scroll: document.querySelector("main").scrollTop,
-                    overflow: document.documentElement.scrollWidth > innerWidth,
-                    settings: bounds(document.querySelector('[data-route="settings"]'))
-                };
-            }, label);
-            const samples = [];
-            samples.push(await measure("initial"));
-            await page.evaluate(() => {
-                const main = document.querySelector("main");
-                main.style.scrollBehavior = "auto";
-                main.scrollTop = main.scrollHeight;
-                document.querySelector("#providers button").focus({
-                    preventScroll: true
-                });
-            });
-            await page.waitForTimeout(600);
-            samples.push(await measure("provider-after-scroll"));
-            for (let i = 0; i < 2; i++) {
-                await page.locator('[data-route="settings"]').click();
-                await page.waitForTimeout(150);
-                await page.locator('[data-route="home"]').click();
-                await page.getByRole("button", {
-                    name: "Browse full catalog",
-                    exact: true
-                }).waitFor();
-                await page.waitForTimeout(250);
-                samples.push(await measure("return-home-" + i));
-            }
-            await page.getByRole("button", {
-                name: "Browse full catalog",
-                exact: true
-            }).click();
-            await page.waitForFunction(() => document.querySelectorAll(".grid .card").length === 60);
-            await page.waitForTimeout(180);
-            await page.locator(".grid .card").last().focus();
-            await page.waitForTimeout(500);
-            samples.push(await measure("last-catalog-card"));
-            await page.locator("#providers button").focus();
-            await page.waitForTimeout(600);
-            samples.push(await measure("provider-after-grid"));
-            for (const key of [ "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp" ]) await page.keyboard.press(key);
-            await page.waitForTimeout(350);
-            samples.push(await measure("dpad-navigation"));
-            await page.setViewportSize({
-                width: 640,
-                height: 360
-            });
-            await page.waitForTimeout(250);
-            const resized = await measure("resized-compact");
-            if (!process.argv.includes("--baseline")) {
-                assert(resized.wordmark.top >= 0 && resized.provider.right <= 633, "Header did not fit after resize");
-                assert(resized.settings.bottom <= 353, "Settings did not fit after resize");
-            }
-            await page.setViewportSize(viewport);
-            await page.waitForTimeout(250);
-            samples.push(await measure("resize-restored"));
-            await page.screenshot({
-                path: path.join(output, "header-" + viewport.width + ".png")
-            });
-            for (const sample of samples) {
-                if (!process.argv.includes("--baseline")) {
-                    assert(!sample.overflow, "Horizontal overflow " + viewport.width + " " + sample.label);
-                    assert(sample.wordmark.top >= 0, "Clipped title " + viewport.width + " " + sample.label);
-                    assert(sample.header.top >= 0, "Clipped header " + viewport.width + " " + sample.label);
-                    assert(sample.provider.top >= 7, "Clipped provider focus ring " + viewport.width + " " + sample.label);
-                    assert(sample.settings.bottom + 7 <= viewport.height, "Clipped Settings focus ring " + viewport.width + " " + sample.label);
-                    if (sample.label === "last-catalog-card") assert(sample.focus.top >= sample.header.bottom, "Focused card is covered by header " + viewport.width);
-                }
-            }
-            assert.equal(errors.length, 0);
-            results.push({
-                viewport: viewport,
-                samples: samples,
-                errors: errors
-            });
-            await context.close();
+            const page = await context.newPage(); page.on("pageerror",error=>errors.push(error.message));
+            await page.goto("https://app.cartoonwatch.test/"); await page.locator(".discovery-shortcuts").waitFor();
+            const samples = [], first = page.locator(".discovery-shortcuts button").first();
+            const measure = async label => {
+                await page.waitForTimeout(550);
+                const value = await page.evaluate(label => {
+                    const node = document.activeElement, rect = node.getBoundingClientRect(), settings = document.querySelector('[data-route="settings"]').getBoundingClientRect();
+                    return {label,noHeader:!document.querySelector(".topbar,#providers,.catalog-summary"),headerHeight:getComputedStyle(document.querySelector("main")).getPropertyValue("--header-height").trim(),focused:{left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom},focusOutline:getComputedStyle(node).outlineStyle,settingsBottom:settings.bottom,overflow:document.documentElement.scrollWidth>innerWidth};
+                },label);
+                assert(value.noHeader && value.headerHeight === "0px", "Unexpected header " + viewport.width + " " + label);
+                assert(!value.overflow, "Horizontal overflow " + viewport.width + " " + label);
+                assert(value.focused.top >= 7 && value.focused.left >= 7 && value.focused.right <= (label === "resized-compact" ? 640 : viewport.width)-7 && value.focused.bottom <= (label === "resized-compact" ? 360 : viewport.height)-7, "Clipped content focus " + viewport.width + " " + label + " " + JSON.stringify(value.focused));
+                assert(value.focusOutline !== "none", "Missing focus ring");
+                assert(value.settingsBottom <= (label === "resized-compact" ? 360 : viewport.height)-7, "Clipped Settings control");
+                return value;
+            };
+            await first.focus(); samples.push(await measure("initial-top-content"));
+            await page.getByRole("button",{name:"Search",exact:true}).focus(); await page.evaluate(()=>{const main=document.querySelector("main");main.style.scrollBehavior="auto";main.scrollTop=main.scrollHeight;}); await first.focus(); samples.push(await measure("top-content-after-deep-scroll"));
+            for (let i=0;i<2;i++) {await page.locator('[data-route="settings"]').click();await page.locator('[data-route="home"]').click();await page.locator(".discovery-shortcuts").waitFor();await first.focus();samples.push(await measure("return-home-"+i));}
+            await page.getByRole("button",{name:"Search",exact:true}).click(); await page.waitForFunction(()=>document.querySelectorAll(".grid .card").length === 60); await page.locator(".grid .card").last().focus(); samples.push(await measure("last-catalog-card"));
+            await page.locator("#search-input").focus(); samples.push(await measure("search-after-deep-grid"));
+            for(const key of ["ArrowDown","ArrowLeft","ArrowRight","ArrowUp"]) await page.keyboard.press(key); samples.push(await measure("dpad-navigation"));
+            await page.setViewportSize({width:640,height:360}); await page.locator("#search-input").focus(); await measure("resized-compact");
+            await page.setViewportSize(viewport); await page.locator("#search-input").focus(); samples.push(await measure("resize-restored"));
+            assert.deepEqual(errors,[]); await page.screenshot({path:path.join(output,"header-"+viewport.width+".png")});
+            results.push({viewport,cases:samples.length,noHeader:true,minFocusTop:Math.min(...samples.map(sample=>sample.focused.top)),overflow:false,errors}); await context.close();
         }
-        fs.writeFileSync(path.join(output, process.argv.includes("--baseline") ? "baseline.json" : "results.json"), JSON.stringify(results, null, 2));
-        console.log(JSON.stringify(results.map(result => ({
-            viewport: result.viewport,
-            cases: result.samples.length,
-            minTitleTop: Math.min(...result.samples.map(sample => sample.wordmark.top)),
-            minHeaderTop: Math.min(...result.samples.map(sample => sample.header.top)),
-            overflow: result.samples.some(sample => sample.overflow),
-            errors: result.errors
-        })), null, 2));
-    } finally {
-        await browser.close();
-    }
-})().catch(error => {
-    console.error(error.stack);
-    process.exitCode = 1;
-});
+    } finally {await browser.close();}
+    fs.writeFileSync(path.join(output,"results.json"),JSON.stringify(results,null,2)); console.log(JSON.stringify(results,null,2));
+})().catch(error=>{console.error(error);process.exitCode=1;});

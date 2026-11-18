@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
     private final CatalogRepository catalog = new CatalogRepository();
     private final PlaybackResolver resolver = new PlaybackResolver(catalog);
     private CatalogIndex catalogIndex;
+    private TrendingRepository trending;
     private ArtworkRepository artwork;
     private ResumeThumbnails resumeThumbnails;
     private final AdBlocker blocker = new AdBlocker();
@@ -105,6 +106,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         preferences = getSharedPreferences("cartoonwatch", MODE_PRIVATE);
         catalogIndex=new CatalogIndex(this);
+        trending=new TrendingRepository(this,catalogIndex);
         artwork=new ArtworkRepository(this);
         resumeThumbnails=new ResumeThumbnails(this);
         try { state = new JSONObject(preferences.getString("state", "{}")); } catch (Exception e) { state = new JSONObject(); }
@@ -119,7 +121,7 @@ public class MainActivity extends Activity {
             frameGuardScript = readAsset("frame-guard.js");
             siteSkipsScript = readAsset("aniwave-skips.js");
         } catch (Exception e) { playerScript = ""; }
-        WebView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(false);
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.rgb(11,13,20));
         setContentView(root);
@@ -515,14 +517,17 @@ public class MainActivity extends Activity {
                 respond(callbackId,new JSONObject().put("ok",true));return;
             }
             if("getState".equals(action)) { respond(callbackId,new JSONObject(state.toString())); return; }
+            if("trending".equals(action)) {
+                trending.request(args.optString("genre"),result->main.post(()->respond(callbackId,result)));return;
+            }
             if("artwork".equals(action)) {
                 io.execute(() -> {
                     try {
                         JSONArray input=args.optJSONArray("items"),remaining=new JSONArray(),frames=new JSONArray();
                         if(input!=null)for(int i=0;i<input.length()&&i<12;i++) {
                             JSONObject item=input.optJSONObject(i);if(item==null)continue;
-                            String frame=resumeThumbnails.image(item);
-                            if(frame.isEmpty())remaining.put(item);else frames.put(new JSONObject().put("url",item.optString("url")).put("image",frame).put("imageSource","Resume frame").put("resumeFrame",true));
+                            String frame="backdrop".equals(item.optString("variant"))?"":resumeThumbnails.image(item);
+                            if(frame.isEmpty())remaining.put(item);else frames.put(new JSONObject().put("url",item.optString("url")).put("variant","poster").put("image",frame).put("imageSource","Resume frame").put("resumeFrame",true));
                         }
                         JSONObject result=artwork.lookup(remaining);JSONArray found=result.getJSONArray("items");for(int i=0;i<frames.length();i++)found.put(frames.get(i));
                         if(args.optBoolean("debug"))result.put("frameDebug",new JSONObject().put("ready",frameReady).put("playing",framePlaying).put("confirmed",playbackConfirmed).put("closing",closingPlayer).put("kind",requestedEpisode==null?"":requestedEpisode.optString("kind")).put("snapshot",resumeThumbnails.diagnostics()));
@@ -738,7 +743,7 @@ public class MainActivity extends Activity {
         }
         immersive();
     }
-    @Override protected void onDestroy() { closed=true;if(voice!=null)voice.close();main.removeCallbacksAndMessages(null);io.shutdownNow();fallbackIo.shutdownNow();if(artwork!=null)artwork.close();if(resumeThumbnails!=null)resumeThumbnails.close();if(catalogBrowser!=null)catalogBrowser.destroy();player.destroy();homeView.destroy();super.onDestroy(); }
+    @Override protected void onDestroy() { closed=true;if(voice!=null)voice.close();main.removeCallbacksAndMessages(null);io.shutdownNow();fallbackIo.shutdownNow();if(trending!=null)trending.close();if(artwork!=null)artwork.close();if(resumeThumbnails!=null)resumeThumbnails.close();if(catalogBrowser!=null)catalogBrowser.destroy();player.destroy();homeView.destroy();super.onDestroy(); }
     private final class Cursor extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         Cursor() { super(MainActivity.this); setFocusable(false); setClickable(false); }

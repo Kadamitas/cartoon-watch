@@ -1,7 +1,7 @@
 {
   "name": "cartoon-watch-roku",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "scripts": {
     "check": "bsc --project bsconfig.json && node tests/run.cjs"
   },

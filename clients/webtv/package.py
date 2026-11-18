@@ -12,7 +12,7 @@ def stage(platform):
     destination = ROOT / 'work' / 'webtv' / platform
     destination.mkdir(parents=True, exist_ok=True)
     assets = ROOT / 'app' / 'src' / 'main' / 'assets'
-    for name in ('index.html', 'app.js', 'app.css', 'brand.svg', 'NOTICE.txt', 'ARTWORK-NOTICE.txt'):
+    for name in ('index.html', 'app.js', 'app.css', 'discovery.js', 'brand.svg', 'NOTICE.txt', 'ARTWORK-NOTICE.txt'):
         shutil.copyfile(assets / name, destination / name)
     for name in ('bridge.js', 'tv.css'):
         shutil.copyfile(ROOT / 'clients' / 'webtv' / name, destination / name)

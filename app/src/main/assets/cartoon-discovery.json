@@ -1,0 +1,917 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-18T07:03:21Z",
+  "source": "TVmaze",
+  "collections": {
+    "cartoon-essentials": [
+      {
+        "url": "https://www.wcostream.tv/anime/avatar-the-last-airbender-book-1-water",
+        "title": "Avatar The Last Airbender Book 1 Water",
+        "rating": 8.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/555/avatar-the-last-airbender"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/gravity-falls",
+        "title": "Gravity Falls",
+        "rating": 8.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/396/gravity-falls"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/batman-the-animated-series",
+        "title": "Batman: The Animated Series",
+        "rating": 8.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/757/batman-the-animated-series"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/ducktales",
+        "title": "DuckTales 1987",
+        "rating": 8.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/4295/ducktales"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/over-the-garden-wall",
+        "title": "Over the Garden Wall",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1744/over-the-garden-wall"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/steven-universe",
+        "title": "Steven Universe",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1615/steven-universe"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/samurai-jack",
+        "title": "Samurai Jack",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/1603/samurai-jack"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/spongebob-squarepants",
+        "title": "SpongeBob SquarePants",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/713/spongebob-squarepants"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-amazing-world-of-gumball-season-1",
+        "title": "The Amazing World of Gumball",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/3134/the-amazing-world-of-gumball"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/scooby-doo-where-are-you-1969",
+        "title": "Scooby-Doo, Where Are You! 1969",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/3358/scooby-doo-where-are-you"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/adventure-time",
+        "title": "Adventure Time",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/290/adventure-time"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/courage-the-cowardly-dog",
+        "title": "Courage the Cowardly Dog",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/1956/courage-the-cowardly-dog"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/regular-show",
+        "title": "Regular Show",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/868/regular-show"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/animaniacs",
+        "title": "Animaniacs",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/6806/animaniacs"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/dexters-laboratory",
+        "title": "Dexter's Laboratory",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/1953/dexters-laboratory"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/phineas-and-ferb",
+        "title": "Phineas and Ferb",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/672/phineas-and-ferb"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/teen-titans",
+        "title": "Teen Titans",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/765/teen-titans"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/hey-arnold",
+        "title": "Hey Arnold!",
+        "rating": 7.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/6482/hey-arnold"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-powerpuff-girls",
+        "title": "The Powerpuff Girls 1998",
+        "rating": 6.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/1955/the-powerpuff-girls"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/ben-10",
+        "title": "Ben 10",
+        "rating": 6.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/951/ben-10"
+      }
+    ],
+    "cartoon-adventures": [
+      {
+        "url": "https://www.wcostream.tv/anime/avatar-the-last-airbender-book-1-water",
+        "title": "Avatar The Last Airbender Book 1 Water",
+        "rating": 8.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/555/avatar-the-last-airbender"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/steven-universe",
+        "title": "Steven Universe",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1615/steven-universe"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/hilda",
+        "title": "Hilda",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/25910/hilda"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/wakfu",
+        "title": "Wakfu",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/10123/wakfu"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-legend-of-korra",
+        "title": "Avatar: The Legend of Korra",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/178/the-legend-of-korra"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-pirates-of-dark-water",
+        "title": "The Pirates of Dark Water",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/19136/the-pirates-of-dark-water"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/adventure-time",
+        "title": "Adventure Time",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/290/adventure-time"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/jackie-chan-adventures",
+        "title": "Jackie Chan Adventures",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/5709/jackie-chan-adventures"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/star-vs-the-forces-of-evil",
+        "title": "Star vs. the Forces of Evil",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/1551/star-vs-the-forces-of-evil"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-dragon-prince",
+        "title": "The Dragon Prince",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/37675/the-dragon-prince"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/trollhunters",
+        "title": "Trollhunters",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/21892/trollhunters-tales-of-arcadia"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/amphibia",
+        "title": "Amphibia",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/35072/amphibia"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/infinity-train",
+        "title": "Infinity Train",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/39945/infinity-train"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/she-ra-and-the-princesses-of-power",
+        "title": "She-Ra and the Princesses of Power",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/37089/she-ra-and-the-princesses-of-power"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/carmen-sandiego",
+        "title": "Carmen Sandiego",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/27346/carmen-sandiego"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/kipo-and-the-age-of-wonderbeasts",
+        "title": "Kipo And The Age Of Wonderbeasts",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/42593/kipo-and-the-age-of-wonderbeasts"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-owl-house",
+        "title": "The Owl House",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/35073/the-owl-house"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/ducktales-2017",
+        "title": "DuckTales 2017",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/19621/ducktales"
+      }
+    ],
+    "cartoon-heroes": [
+      {
+        "url": "https://www.wcostream.tv/anime/batman-the-animated-series",
+        "title": "Batman: The Animated Series",
+        "rating": 8.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/757/batman-the-animated-series"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/spider-man-animated-series-1994",
+        "title": "Spider-Man Animated Series 1994",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1611/spider-man"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/x-men-97",
+        "title": "X-Men '97",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/58951/x-men-97"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/batman-beyond",
+        "title": "Batman Beyond",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/504/batman-beyond"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-avengers-earths-mightiest-heroes",
+        "title": "The Avengers: Earth's Mightiest Heroes",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/671/the-avengers-earths-mightiest-heroes"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/x-men",
+        "title": "X-Men: The Animated Series 1992",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/472/x-men"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/young-justice",
+        "title": "Young Justice",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/689/young-justice"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/justice-league-unlimited",
+        "title": "Justice League Unlimited",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/505/justice-league-unlimited"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/superman-the-animated-series",
+        "title": "Superman: The Animated Series",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/1957/superman-the-animated-series"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/danny-phantom",
+        "title": "Danny Phantom",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/6301/danny-phantom"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/justice-league",
+        "title": "Justice League",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/22040/justice-league"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/kim-possible",
+        "title": "Kim Possible",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/2557/kim-possible"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/gargoyles",
+        "title": "Gargoyles",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/1898/gargoyles"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/tmnt-2003",
+        "title": "Teenage Mutant Ninja Turtles (2003)",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/736/teenage-mutant-ninja-turtles"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/teen-titans",
+        "title": "Teen Titans",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/765/teen-titans"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-spectacular-spider-man",
+        "title": "The Spectacular Spider-Man",
+        "rating": 7.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/4490/the-spectacular-spider-man"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/generator-rex",
+        "title": "Generator Rex",
+        "rating": 7,
+        "sourceUrl": "https://www.tvmaze.com/shows/8317/generator-rex"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/my-life-as-a-teenage-robot",
+        "title": "My Life as a Teenage Robot",
+        "rating": 6.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/12450/my-life-as-a-teenage-robot"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/transformers-prime",
+        "title": "Transformers: Prime",
+        "rating": 6.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/5823/transformers-prime"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/ben-10",
+        "title": "Ben 10",
+        "rating": 6.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/951/ben-10"
+      }
+    ],
+    "cartoon-mysteries": [
+      {
+        "url": "https://www.wcostream.tv/anime/gravity-falls",
+        "title": "Gravity Falls",
+        "rating": 8.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/396/gravity-falls"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/over-the-garden-wall",
+        "title": "Over the Garden Wall",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1744/over-the-garden-wall"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/hilda",
+        "title": "Hilda",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/25910/hilda"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/scooby-doo-mystery-incorporated",
+        "title": "Scooby Doo! Mystery Incorporated",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/2711/scooby-doo-mystery-incorporated"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/scooby-doo-where-are-you-1969",
+        "title": "Scooby-Doo, Where Are You! 1969",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/3358/scooby-doo-where-are-you"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-real-ghostbusters",
+        "title": "The Real Ghostbusters",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/4299/the-real-ghostbusters"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/courage-the-cowardly-dog",
+        "title": "Courage the Cowardly Dog",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/1956/courage-the-cowardly-dog"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/whats-new-scooby-doo",
+        "title": "What's New, Scooby-Doo?",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/7593/whats-new-scooby-doo"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/be-cool-scooby-doo",
+        "title": "Be Cool, Scooby-Doo!",
+        "rating": 7.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/5682/be-cool-scooby-doo"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/inspector-gadget",
+        "title": "Inspector Gadget",
+        "rating": 6.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/4579/inspector-gadget"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/archie-s-weird-mysteries",
+        "title": "Archie's Weird Mysteries",
+        "rating": 6.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/15919/archies-weird-mysteries"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-secret-saturdays",
+        "title": "The Secret Saturdays",
+        "rating": 6.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/26989/the-secret-saturdays"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/martin-mystery",
+        "title": "Martin Mystery",
+        "rating": 6.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/16444/martin-mystery"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/a-pup-named-scooby-doo",
+        "title": "A Pup Named Scooby-Doo",
+        "rating": 5.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/4796/a-pup-named-scooby-doo"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/detentionaire",
+        "title": "Detentionaire",
+        "rating": 5.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/16255/detentionaire"
+      }
+    ],
+    "cartoon-adult": [
+      {
+        "url": "https://www.wcostream.tv/anime/rick-and-morty",
+        "title": "Rick and Morty",
+        "rating": 8.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/216/rick-and-morty"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/futurama-season-1",
+        "title": "Futurama",
+        "rating": 8.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/538/futurama"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/archer",
+        "title": "Archer",
+        "rating": 8.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/315/archer"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/south-park",
+        "title": "South Park",
+        "rating": 8.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/112/south-park"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-venture-bros",
+        "title": "The Venture Bros.",
+        "rating": 8.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/304/the-venture-bros"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/bob-s-burgers",
+        "title": "Bob's Burgers",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/107/bobs-burgers"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/bojack-horseman",
+        "title": "BoJack Horseman",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/184/bojack-horseman"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/genndy-tartakovskys-primal",
+        "title": "Genndy Tartakovsky's Primal",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/42184/primal"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/invincible",
+        "title": "Invincible",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/37196/invincible"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/f-is-for-family",
+        "title": "F Is for Family",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/6209/f-is-for-family"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/boondocks",
+        "title": "The Boondocks",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/912/the-boondocks"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/aqua-teen-hunger-force",
+        "title": "Aqua Teen Hunger Force",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/382/aqua-teen-hunger-force"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/king-of-the-hill",
+        "title": "King of the Hill",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/115/king-of-the-hill"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/american-dad-season-1",
+        "title": "American Dad!",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/215/american-dad"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/family-guy",
+        "title": "Family Guy",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/84/family-guy"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/inside-job",
+        "title": "Inside Job",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/41933/inside-job"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/metalocalypse",
+        "title": "Metalocalypse",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/928/metalocalypse"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/smiling-friends",
+        "title": "Smiling Friends",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/47182/smiling-friends"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/harley-quinn",
+        "title": "Harley Quinn",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/33452/harley-quinn"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/disenchantment",
+        "title": "Disenchantment",
+        "rating": 7.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/30715/disenchantment"
+      }
+    ],
+    "cartoon-offbeat": [
+      {
+        "url": "https://www.wcostream.tv/anime/spongebob-squarepants",
+        "title": "SpongeBob SquarePants",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/713/spongebob-squarepants"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-amazing-world-of-gumball-season-1",
+        "title": "The Amazing World of Gumball",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/3134/the-amazing-world-of-gumball"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/adventure-time",
+        "title": "Adventure Time",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/290/adventure-time"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/courage-the-cowardly-dog",
+        "title": "Courage the Cowardly Dog",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/1956/courage-the-cowardly-dog"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/invader-zim",
+        "title": "Invader Zim",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/409/invader-zim"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/regular-show",
+        "title": "Regular Show",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/868/regular-show"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/animaniacs",
+        "title": "Animaniacs",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/6806/animaniacs"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/ed-edd-n-eddy",
+        "title": "Ed, Edd n Eddy",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/6428/ed-edd-n-eddy"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/fosters-home-for-imaginary-friends",
+        "title": "Foster`s Home for Imaginary Friends",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/7335/fosters-home-for-imaginary-friends"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/we-bare-bears",
+        "title": "We Bare Bears",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/2612/we-bare-bears"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/chowder",
+        "title": "Chowder",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/978/chowder"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-angry-beavers",
+        "title": "The Angry Beavers",
+        "rating": 7.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/5041/the-angry-beavers"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-marvelous-misadventures-of-flapjack",
+        "title": "The Marvelous Misadventures of Flapjack",
+        "rating": 7.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/5472/the-marvelous-misadventures-of-flapjack"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/wander-over-yonder",
+        "title": "Wander Over Yonder",
+        "rating": 7.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/1616/wander-over-yonder"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-grim-adventures-of-billy-and-mandy",
+        "title": "The Grim Adventures Of Billy and Mandy",
+        "rating": 7,
+        "sourceUrl": "https://www.tvmaze.com/shows/7345/the-grim-adventures-of-billy-mandy"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/rockos-modern-life",
+        "title": "Rocko's Modern Life",
+        "rating": 6.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/6322/rockos-modern-life"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/clarence",
+        "title": "Clarence",
+        "rating": 6.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/5617/clarence"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/freakazoid",
+        "title": "Freakazoid!",
+        "rating": 5.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/6838/freakazoid"
+      }
+    ],
+    "cartoon-classics": [
+      {
+        "url": "https://www.wcostream.tv/anime/ducktales",
+        "title": "DuckTales 1987",
+        "rating": 8.2,
+        "sourceUrl": "https://www.tvmaze.com/shows/4295/ducktales"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/darkwing-duck",
+        "title": "Darkwing Duck",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/5309/darkwing-duck"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/scooby-doo-where-are-you-1969",
+        "title": "Scooby-Doo, Where Are You! 1969",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/3358/scooby-doo-where-are-you"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/jonny-quest",
+        "title": "Jonny Quest",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/4044/jonny-quest"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/chip-n-dale-rescue-rangers",
+        "title": "Chip 'n Dale: Rescue Rangers",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/5308/chip-n-dale-rescue-rangers"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/talespin",
+        "title": "TaleSpin",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/8520/talespin"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/teenage-mutant-ninja-turtles-1987",
+        "title": "Teenage Mutant Ninja Turtles (1987)",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/4159/teenage-mutant-ninja-turtles"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-flintstones",
+        "title": "The Flintstones",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/2143/the-flintstones"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/top-cat",
+        "title": "Top Cat",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/5764/top-cat"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/wacky-races",
+        "title": "Wacky Races 1968",
+        "rating": 7.6,
+        "sourceUrl": "https://www.tvmaze.com/shows/5751/wacky-races"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/animaniacs",
+        "title": "Animaniacs",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/6806/animaniacs"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-jetsons",
+        "title": "The Jetsons",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/2145/the-jetsons"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/super-friends",
+        "title": "Super Friends",
+        "rating": 7,
+        "sourceUrl": "https://www.tvmaze.com/shows/20279/super-friends"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/tiny-toon-adventures",
+        "title": "Tiny Toon Adventures",
+        "rating": 7,
+        "sourceUrl": "https://www.tvmaze.com/shows/4484/tiny-toon-adventures"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/he-man-and-the-masters-of-the-universe",
+        "title": "He-Man and the Masters of the Universe 1983",
+        "rating": 6.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/4230/he-man-and-the-masters-of-the-universe"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-smurfs",
+        "title": "The Smurfs",
+        "rating": 6.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/4583/the-smurfs"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/thundercats-1985",
+        "title": "ThunderCats 1985",
+        "rating": 6.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/4476/thundercats"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/inspector-gadget",
+        "title": "Inspector Gadget",
+        "rating": 6.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/4579/inspector-gadget"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/space-ghost",
+        "title": "Space Ghost",
+        "rating": 6,
+        "sourceUrl": "https://www.tvmaze.com/shows/21960/space-ghost-and-dino-boy"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-yogi-bear-show",
+        "title": "The Yogi Bear Show",
+        "rating": 5.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/5755/the-yogi-bear-show"
+      }
+    ],
+    "cartoon-fantasy": [
+      {
+        "url": "https://www.wcostream.tv/anime/avatar-the-last-airbender-book-1-water",
+        "title": "Avatar The Last Airbender Book 1 Water",
+        "rating": 8.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/555/avatar-the-last-airbender"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/over-the-garden-wall",
+        "title": "Over the Garden Wall",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1744/over-the-garden-wall"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/steven-universe",
+        "title": "Steven Universe",
+        "rating": 8.1,
+        "sourceUrl": "https://www.tvmaze.com/shows/1615/steven-universe"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/hilda",
+        "title": "Hilda",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/25910/hilda"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/wakfu",
+        "title": "Wakfu",
+        "rating": 8,
+        "sourceUrl": "https://www.tvmaze.com/shows/10123/wakfu"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-legend-of-korra",
+        "title": "Avatar: The Legend of Korra",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/178/the-legend-of-korra"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-pirates-of-dark-water",
+        "title": "The Pirates of Dark Water",
+        "rating": 7.9,
+        "sourceUrl": "https://www.tvmaze.com/shows/19136/the-pirates-of-dark-water"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/adventure-time",
+        "title": "Adventure Time",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/290/adventure-time"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/star-vs-the-forces-of-evil",
+        "title": "Star vs. the Forces of Evil",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/1551/star-vs-the-forces-of-evil"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-dragon-prince",
+        "title": "The Dragon Prince",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/37675/the-dragon-prince"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/trollhunters",
+        "title": "Trollhunters",
+        "rating": 7.8,
+        "sourceUrl": "https://www.tvmaze.com/shows/21892/trollhunters-tales-of-arcadia"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/amphibia",
+        "title": "Amphibia",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/35072/amphibia"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/she-ra-and-the-princesses-of-power",
+        "title": "She-Ra and the Princesses of Power",
+        "rating": 7.7,
+        "sourceUrl": "https://www.tvmaze.com/shows/37089/she-ra-and-the-princesses-of-power"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/gargoyles",
+        "title": "Gargoyles",
+        "rating": 7.5,
+        "sourceUrl": "https://www.tvmaze.com/shows/1898/gargoyles"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/kipo-and-the-age-of-wonderbeasts",
+        "title": "Kipo And The Age Of Wonderbeasts",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/42593/kipo-and-the-age-of-wonderbeasts"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-owl-house",
+        "title": "The Owl House",
+        "rating": 7.4,
+        "sourceUrl": "https://www.tvmaze.com/shows/35073/the-owl-house"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/american-dragon-jake-long-season-1",
+        "title": "American Dragon Jake Long",
+        "rating": 6.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/10007/american-dragon-jake-long"
+      },
+      {
+        "url": "https://www.wcostream.tv/anime/the-life-and-times-of-juniper-lee",
+        "title": "The Life and Times of Juniper Lee",
+        "rating": 5.3,
+        "sourceUrl": "https://www.tvmaze.com/shows/16204/the-life-and-times-of-juniper-lee"
+      }
+    ]
+  }
+}

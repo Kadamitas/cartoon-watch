@@ -5,20 +5,22 @@ import {createCompanion} from './service.mjs';
 
 const title='https://www.wcostream.tv/anime/naruto',episode='https://www.wcostream.tv/naruto-episode-3-english-dubbed';
 const poster='https://cdn.myanimelist.net/images/anime/1141/142503.jpg';
+const banner='https://s4.anilist.co/file/anilistcdn/media/anime/banner/21-test.jpg';
 const catalog={items:[{title:'Naruto',url:title,kind:'series',image:poster,imageSource:'MyAnimeList',imageSourceUrl:'https://myanimelist.net/anime/20',imageAttribution:'Cover art via MyAnimeList'}],coverage:[{category:'Dubbed anime'}]};
 const wait=async predicate=>{for(let i=0;i<50;i++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,10));}throw Error('Artwork work did not settle');};
 
 test('bulk series covers use small URLs, provenance and parent-only episode routing',()=>{
   let calls=0;const store=new ArtworkStore({catalog,resolve:async()=>{calls++;throw Error();}});
   const result=store.lookup([{url:title,kind:'series'},{url:episode,kind:'episode',seriesUrl:title},{url:episode+'-other',kind:'episode'}]);
-  assert.equal(result.pending.length,0);assert.equal(calls,0);assert.match(result.items[0].image,/\/r\/160x225\/images\/anime\//);assert.equal(result.items[0].imageSource,'MyAnimeList');assert.equal(result.items[1].url,episode);assert.equal(result.items[1].image,result.items[0].image);assert.equal(result.items[2].image,'');
+  assert.equal(result.pending.length,0);assert.equal(calls,0);assert.match(result.items[0].image,/\/r\/300x450\/images\/anime\//);assert.equal(result.items[0].imageSource,'MyAnimeList');assert.equal(result.items[1].url,episode);assert.equal(result.items[1].image,result.items[0].image);assert.equal(result.items[2].image,'');
+  assert.equal(artworkURL('https://cdn.myanimelist.net/r/160x225/images/anime/1141/142503.jpg'),result.items[0].image);
   assert.match(artworkURL('https://static.tvmaze.com/uploads/images/original_untouched/1/2.jpg'),/medium_portrait/);store.close();
 });
 
 test('missing series work coalesces and failures are negatively cached',async()=>{
   let calls=0,release;const url='https://www.wcostream.tv/anime/another';
   const store=new ArtworkStore({catalog:{items:[]},verify:async()=>true,resolve:()=>{calls++;return new Promise(resolve=>{release=resolve;});}});
-  assert.deepEqual(store.lookup([{url}]).pending,[url]);store.lookup([{url}]);await wait(()=>!!release);assert.equal(calls,1);
+  assert.deepEqual(store.lookup([{url}]).pending,[{url,variant:'poster'}]);store.lookup([{url}]);await wait(()=>!!release);assert.equal(calls,1);
   release({image:'https://images.wcostream.com/catimg/123.jpg'});await wait(()=>store.pending.size===0);
   const resolved=store.lookup([{url}]).items[0];assert.equal(resolved.imageSource,'WCO');assert.equal(resolved.imageSourceUrl,url);assert.equal(resolved.url,url);store.close();
   const failed=new ArtworkStore({catalog:{items:[]},resolve:async()=>{calls++;throw Error('offline');}});failed.lookup([{url}]);await wait(()=>failed.pending.size===0);const before=calls;assert.equal(failed.lookup([{url}]).items[0].image,'');assert.equal(calls,before);failed.close();
@@ -36,8 +38,29 @@ test('other image hosts are probed for actual pixel and download limits',async()
   const fetcher=async()=>new Response(png,{headers:{'content-type':'image/png'}});
   assert.equal(await smallImage('https://images.wcostream.com/catimg/test.png',fetcher),true);
   const huge=Buffer.from(png);huge.writeUInt32BE(1024,16);assert.equal(await smallImage('https://images.wcostream.com/catimg/test.png',async()=>new Response(huge,{headers:{'content-type':'image/png'}})),false);
+  const large=Buffer.from(png);large.writeUInt32BE(320,16);large.writeUInt32BE(480,20);assert.equal(await smallImage('https://images.wcostream.com/catimg/test.png',async()=>new Response(large,{headers:{'content-type':'image/png'}})),true);large.writeUInt32BE(321,16);assert.equal(await smallImage('https://images.wcostream.com/catimg/test.png',async()=>new Response(large,{headers:{'content-type':'image/png'}})),false);
   assert.equal(await smallImage('https://images.wcostream.com/catimg/test.png',async()=>new Response(png,{headers:{'content-type':'image/png','content-length':'600000'}})),false);
   assert.equal(await smallImage('https://cdn.myanimelist.net.evil.invalid/art.jpg',()=>{throw Error('must not fetch');}),false);
+});
+
+test('hero backdrops use only genuine bounded landscape raster images',async()=>{
+  const bytes=Buffer.alloc(24);Buffer.from([137,80,78,71,13,10,26,10]).copy(bytes);bytes.writeUInt32BE(1900,16);bytes.writeUInt32BE(400,20);
+  const fetcher=async()=>new Response(bytes,{headers:{'content-type':'image/png'}});
+  assert.equal(await smallImage(banner,fetcher,'backdrop'),true);
+  for(const value of [banner.replace('/banner/','/cover/large/'),banner.replace('s4.anilist.co','evil.example'),banner+'?key=x',banner+'#x',banner.replace('.jpg','.svg'),poster])assert.equal(await smallImage(value,()=>{throw Error('must not fetch');},'backdrop'),false);
+  bytes.writeUInt32BE(230,16);bytes.writeUInt32BE(345,20);assert.equal(await smallImage(banner,fetcher,'backdrop'),false);
+  bytes.writeUInt32BE(2049,16);bytes.writeUInt32BE(400,20);assert.equal(await smallImage(banner,fetcher,'backdrop'),false);
+  assert.equal(await smallImage(banner,async()=>new Response(bytes,{headers:{'content-type':'image/png','content-length':'1048577'}}),'backdrop'),false);
+  assert.equal(await smallImage(banner,async()=>new Response('',{status:302,headers:{location:poster}}),'backdrop'),false);
+});
+
+test('poster and backdrop work coalesce separately and missing banners never resolve a poster',async()=>{
+  let calls=0;const probes=[];
+  const store=new ArtworkStore({catalog,resolve:async()=>{calls++;throw Error('must not resolve banner');},verify:async(url,variant)=>{probes.push({url,variant});return true;}});
+  const items=[{url:title,variant:'poster'},{url:title,variant:'backdrop',backdrop:banner,backdropSource:'AniList',backdropSourceUrl:'https://anilist.co/anime/21',backdropAttribution:'Promotional artwork'}];
+  const first=store.lookup(items);assert.equal(first.items.length,1);assert.equal(first.items[0].variant,'poster');assert.deepEqual(first.pending,[{url:title,variant:'backdrop'}]);store.lookup(items);await wait(()=>store.pending.size===0);
+  const complete=store.lookup(items);assert.equal(complete.items.length,2);assert.equal(complete.items[0].image,artworkURL(poster));assert.equal(complete.items[1].image,banner);assert.equal(complete.items[1].imageSource,'AniList');assert.equal(complete.items[1].imageSourceUrl,'https://anilist.co/anime/21');assert.deepEqual(probes,[{url:banner,variant:'backdrop'}]);assert.equal(calls,0);
+  const missing=store.lookup([{url:episode,kind:'episode',seriesUrl:title,variant:'backdrop',image:poster}]);assert.deepEqual(missing.items,[{url:episode,variant:'backdrop',image:''}]);assert.equal(calls,0);store.close();
 });
 
 test('LAN artwork endpoint preserves the bounded bridge protocol',async t=>{

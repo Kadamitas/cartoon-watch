@@ -18,10 +18,20 @@ the applicable license URIs are retained here and in the catalog's source metada
 https://opendatacommons.org/licenses/odbl/1.0/
 https://opendatacommons.org/licenses/dbcl/1.0/
 
+AniList
+Confidently matched anime may use AniList's larger poster and promotional banner
+URLs. Poster and backdrop variants retain separate source-page links and ownership
+notices. A season relationship does not replace another series or remake's poster.
+Episode screenshots remain device-private and separate from promotional artwork.
+https://docs.anilist.co/guide/terms-of-use
+
 TVmaze
 TVmaze-derived artwork URL/title mappings, identifiable by imageSource TVmaze,
 are adapted from its public animation index and available under CC BY-SA 4.0.
 Each matching catalog item retains a TVmaze source-page link and attribution.
+The curated cartoon-discovery.json collections also adapt TVmaze show identities
+and 0-10 ratings under CC BY-SA 4.0. Entries retain each source-page URL and the
+snapshot date; they are curated picks, not universal popularity or viewing counts.
 https://www.tvmaze.com/api
 https://creativecommons.org/licenses/by-sa/4.0/
 

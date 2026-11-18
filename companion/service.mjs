@@ -4,7 +4,7 @@ import {HttpError,PlayQueue,readBody} from './runtime.mjs';
 const normalize=value=>String(value||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 function json(response,status,value){const body=JSON.stringify(value);response.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','content-length':Buffer.byteLength(body)});response.end(body);}
 
-export function createCompanion({catalog,details,play,media,artwork,queue=new PlayQueue()}){
+export function createCompanion({catalog,details,play,media,artwork,trending,queue=new PlayQueue()}){
   const records=catalog.items.map(item=>({...item,key:normalize(item.title)})),categories=catalog.coverage.map(item=>item.category),cached=new Map(),pending=new Map();
   async function cachedDetails(url){
     if(!url||url.length>2048)throw new HttpError(400,'A source title address is required');
@@ -31,7 +31,8 @@ export function createCompanion({catalog,details,play,media,artwork,queue=new Pl
         json(response,200,await queue.run(()=>{if(response.destroyed)throw new HttpError(499,'Playback request cancelled');return play(target,base);}));return;
       }
       if(method!=='GET')throw new HttpError(405,'Method not allowed');
-      if(url.pathname==='/health'){json(response,200,{ok:true,app:'Cartoon Watch',version:'0.3.0'});return;}
+      if(url.pathname==='/health'){json(response,200,{ok:true,app:'Cartoon Watch',version:'0.5.0'});return;}
+      if(url.pathname==='/api/trending'){json(response,200,trending?await trending.lookup(url.searchParams.get('genre')||''):{items:[],source:'AniList',available:false,stale:false});return;}
       if(url.pathname==='/api/catalog'){
         const query=normalize(url.searchParams.get('q')).slice(0,200),category=url.searchParams.get('category')||'all',sort=url.searchParams.get('sort')||'az';
         const offset=Math.max(0,Math.min(1000000,Math.trunc(Number(url.searchParams.get('offset'))||0))),limit=Math.max(1,Math.min(120,Math.trunc(Number(url.searchParams.get('limit'))||60)));

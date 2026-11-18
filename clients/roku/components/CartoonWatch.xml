@@ -7,10 +7,16 @@
   <children>
     <Group id="library">
       <Label translation="[60,42]" width="1800" height="60" text="CARTOON WATCH" font="font:LargeBoldSystemFont" color="#FF795B" />
-      <Label id="heading" translation="[350,116]" width="1450" height="48" text="WCO catalog" font="font:MediumBoldSystemFont" color="#E6E9EF" />
-      <ButtonGroup id="menu" translation="[60,190]" minWidth="250" maxWidth="250" buttonHeight="56" itemSpacings="[14]" textFont="font:SmallSystemFont" focusedTextFont="font:SmallBoldSystemFont" />
-      <MarkupGrid id="catalog" translation="[350,190]" numColumns="4" numRows="3" itemSize="[344,225]" itemSpacing="[18,22]" itemComponentName="CatalogCard" drawFocusFeedback="false" vertFocusAnimationStyle="fixedFocus" />
+      <Label id="heading" translation="[350,116]" width="1450" height="48" text="Trending this week" font="font:MediumBoldSystemFont" color="#E6E9EF" />
+      <ButtonGroup id="menu" translation="[60,190]" minWidth="280" maxWidth="280" buttonHeight="50" itemSpacings="[9]" textFont="font:SmallSystemFont" focusedTextFont="font:SmallBoldSystemFont" />
+      <MarkupGrid id="catalog" translation="[350,190]" numColumns="4" numRows="2" itemSize="[344,364]" itemSpacing="[18,22]" itemComponentName="CatalogCard" drawFocusFeedback="false" vertFocusAnimationStyle="fixedFocus" />
       <Label id="status" translation="[350,958]" width="1450" height="70" numLines="2" wrap="true" font="font:SmallSystemFont" color="#9DAABE" />
+    </Group>
+    <Group id="genreChooser" visible="false">
+      <Label id="genreHeading" translation="[300,90]" width="1320" height="70" text="Anime categories" font="font:LargeBoldSystemFont" color="#FF795B" />
+      <Label id="genreHelp" translation="[300,175]" width="1320" height="50" text="Explore all-time popular anime available in WCO" font="font:SmallSystemFont" color="#A6B3C6" />
+      <LabelList id="genres" translation="[300,255]" itemSize="[1320,56]" numRows="11" textFont="font:SmallSystemFont" focusedTextFont="font:SmallBoldSystemFont" />
+      <Label translation="[300,950]" width="1320" height="55" text="OK: choose genre   Back: return" font="font:SmallSystemFont" color="#77859B" />
     </Group>
     <Group id="detail" visible="false">
       <Label id="detailTitle" translation="[70,70]" width="1780" height="80" font="font:LargeBoldSystemFont" color="#FF795B" />

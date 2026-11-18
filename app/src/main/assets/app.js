@@ -92,6 +92,10 @@
     var route = "home";
     var currentProvider = "wco";
     var catalog = [];
+    var trendingData = { items: [] }, trendingPending, trendingLoaded = false, trendingNext = 0, trendingVersion = 0, homeTrendingDirty = false;
+    var discoveryCategories = Array.isArray(window.CWDiscoveryCategories) ? window.CWDiscoveryCategories : [];
+    var genreDomains = { anime: { key: "isekai", data: { items: [] }, cache: {}, version: 0, dirty: false }, cartoons: { key: "cartoon-essentials", data: { items: [] }, cache: {}, version: 0, dirty: false } };
+    var genreDomain = "anime", genrePending, genreQueued = {};
     var catalogInfo = {
         total: 0,
         categories: [ "Dubbed anime", "Cartoons", "Subbed anime", "Movies", "OVA" ]
@@ -295,7 +299,7 @@
         searchOffset = 0;
         searchCategory = "all";
         saveState();
-        renderProviders();
+        renderStatus();
         setRoute("search", true);
     }
     window.searchAlternative = searchAlternative;
@@ -310,30 +314,26 @@
             toast(error.message);
         });
     }
-    function renderProviders() {
-        var root = document.getElementById("providers");
-        root.textContent = "";
-        var node = button("WCO", "provider active", function() {
-            setRoute("home", true);
-        });
-        node.setAttribute("aria-pressed", "true");
-        node.insertBefore(el("i", "live-dot"), node.firstChild);
-        root.appendChild(node);
-        root.appendChild(el("span", "provider", catalogInfo.total ? catalogInfo.total.toLocaleString() + " titles" : "Automatic fallbacks"));
+    function renderStatus() {
         document.getElementById("footer-status").textContent = (state.settings.adBlock ? "Ad protection on" : "Ad protection off") + " · WCO";
     }
-    function setRoute(next, focus) {
+    function setRoute(next, focus, restoreGenre) {
         if (detailOpen) closeDetails(false);
         route = next;
         loadIndex++;
         document.querySelectorAll(".nav-button").forEach(function(node) {
-            var active = node.getAttribute("data-route") === route;
+            var active = node.getAttribute("data-route") === (route === "genre" ? "home" : route);
             node.classList.toggle("active", active);
             if (active) node.setAttribute("aria-current", "page"); else node.removeAttribute("aria-current");
         });
-        main.scrollTop = 0;
-        if (next === "home") loadHome(); else if (next === "search") renderSearch(); else if (next === "list") renderList(); else if (next === "settings") renderSettings();
-        if (focus) setTimeout(focusContent, 40);
+        if (next === "genre") { var scrollBehavior = main.style.scrollBehavior; main.style.scrollBehavior = "auto"; main.scrollTop = 0; main.style.scrollBehavior = scrollBehavior; } else main.scrollTop = 0;
+        if (next === "home" && restoreGenre) {
+            renderHome({ items: catalog });
+            var origin = genreDomains[genreDomain], behavior = main.style.scrollBehavior; main.style.scrollBehavior = "auto"; main.scrollTop = origin.homeScroll;
+            origin.viewAll.focus({ preventScroll: true }); main.scrollTop += origin.viewAll.getBoundingClientRect().top - origin.homeTop; main.style.scrollBehavior = behavior;
+            loadTrending(loadIndex); loadGenres();
+        } else if (next === "home") loadHome(); else if (next === "genre") renderGenre(); else if (next === "search") renderSearch(); else if (next === "list") renderList(); else if (next === "settings") renderSettings();
+        if (focus && !restoreGenre) { var focusToken = loadIndex, focusOrigin = document.activeElement; setTimeout(function() { if (focusToken === loadIndex && route === next && !detailOpen && document.activeElement === focusOrigin) focusContent(); }, 40); }
     }
     function focusContent() {
         var first = content.querySelector("input,button,select");
@@ -420,67 +420,82 @@
         updateFavoriteButton(node, item);
         return node;
     }
-    function addImage(holder, item, className) {
+    function addImage(holder, item, className, variant) {
         var fallback = el("div", "card-art", "cw");
         holder.appendChild(fallback);
-        var entry={holder:holder,item:item,fallback:fallback,className:className || "",visible:false,done:false,next:0,attempts:0};
+        var entry={holder:holder,item:item,fallback:fallback,className:className || "",variant:variant || "poster",hero:className === "hero-art",visible:false,done:false,next:0,attempts:0};
         artworkEntries.push(entry);
         if(++artworkAdds%64===0){clearTimeout(artworkPruneTimer);artworkPruneTimer=setTimeout(pruneArtwork,0);}
         if(!artworkObserver && window.IntersectionObserver)artworkObserver=new IntersectionObserver(function(changes){changes.forEach(function(change){var record=change.target.__cwArtwork;if(record){record.visible=change.isIntersecting;if(record.visible)scheduleArtwork();}});},{rootMargin:"180px"});
         holder.__cwArtwork=entry;
-        if(artworkObserver)artworkObserver.observe(holder);else {entry.visible=true;scheduleArtwork();}
+        if(artworkObserver){artworkObserver.unobserve(holder);artworkObserver.observe(holder);}else {entry.visible=true;scheduleArtwork();}
         return entry;
     }
     var artworkEntries=[],artworkCache=new Map(),artworkObserver,artworkTimer,artworkPruneTimer,artworkBusy=false,artworkGeneration=0,artworkAdds=0;
-    function pruneArtwork() {artworkEntries=artworkEntries.filter(function(entry){if(document.contains(entry.holder))return true;if(artworkObserver)artworkObserver.unobserve(entry.holder);return false;});}
+    function pruneArtwork() {artworkEntries=artworkEntries.filter(function(entry){if(document.contains(entry.holder)&&entry.holder.__cwArtwork===entry)return true;if(artworkObserver&&entry.holder.__cwArtwork===entry)artworkObserver.unobserve(entry.holder);return false;});}
     function scheduleArtwork(delay) {clearTimeout(artworkTimer);artworkTimer=setTimeout(loadArtwork,delay || 40);}
+    function artworkKey(url,variant) {return (variant || "poster") + "|" + url;}
+    function artworkSource(entry) {return String(entry.item[entry.variant==="backdrop"?"backdrop":"image"] || "");}
+    function heroArtMode(entry,variant) {
+        if(!entry.hero)return;
+        var hero=entry.holder.closest(".hero");if(hero)hero.setAttribute("data-artwork-variant",variant);
+    }
+    function posterFallback(entry) {
+        if(!entry.hero || entry.variant!=="backdrop")return false;
+        entry.variant="poster";entry.done=false;entry.next=0;entry.attempts=0;
+        if(entry.image && entry.image.__cwVariant!=="poster"){entry.image.remove();entry.image=null;}
+        heroArtMode(entry,"poster");scheduleArtwork();return true;
+    }
     function paintArtwork(entry,value) {
         var src=imageUrl(value.image);
-        if(!src){if(entry.image)entry.image.remove();entry.image=null;entry.fallback.hidden=false;return;}
-        if(entry.image && entry.image.src===src)return;
+        if(!src){if(posterFallback(entry))return;if(entry.image)entry.image.remove();entry.image=null;entry.fallback.hidden=false;return;}
+        var variant=value.variant==="backdrop"?"backdrop":"poster";
+        if(entry.image && entry.image.src===src){if(entry.image.complete && entry.image.naturalWidth)heroArtMode(entry,variant);return;}
         if(!entry.image){
             var image=el("img",entry.className);image.alt="";image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";
-            image.addEventListener("load",function(){entry.fallback.hidden=true;});
-            image.addEventListener("error",function(){image.remove();entry.image=null;entry.fallback.hidden=false;if(entry.attempts++<1){artworkCache.delete(entry.item.url);entry.done=false;entry.next=Date.now()+1000;scheduleArtwork(1000);}});
+            image.addEventListener("load",function(){entry.fallback.hidden=true;heroArtMode(entry,image.__cwVariant);});
+            image.addEventListener("error",function(){image.remove();entry.image=null;entry.fallback.hidden=false;artworkCache.delete(artworkKey(entry.item.url,entry.variant));if(posterFallback(entry))return;if(entry.attempts++<1){entry.done=false;entry.next=Date.now()+1000;scheduleArtwork(1000);}});
             entry.image=image;entry.holder.appendChild(image);
         }
+        entry.image.__cwVariant=variant;
         entry.image.src=src;
         if(value.imageSource)entry.holder.setAttribute("data-artwork-source",value.imageSource);
     }
-    function rememberArtwork(url,value) {
-        artworkCache.delete(url);artworkCache.set(url,{value:value,expires:Date.now()+(value.image?300000:600000)});
+    function rememberArtwork(key,value,source) {
+        artworkCache.delete(key);artworkCache.set(key,{value:value,source:source,expires:Date.now()+(value.image?300000:600000)});
         while(artworkCache.size>160)artworkCache.delete(artworkCache.keys().next().value);
-        artworkEntries.forEach(function(entry){if(entry.item.url===url){entry.done=true;paintArtwork(entry,value);}});
+        artworkEntries.forEach(function(entry){if(artworkKey(entry.item.url,entry.variant)===key&&artworkSource(entry)===source){entry.done=true;paintArtwork(entry,value);}});
     }
     function loadArtwork() {
         pruneArtwork();
         if(artworkBusy || document.hidden)return;
-        var now=Date.now(),selected=[],seen=new Set(),next=Infinity;
+        var now=Date.now(),selected=[],seen=new Map(),next=Infinity;
         artworkEntries.forEach(function(entry){
             if(entry.done || !entry.visible)return;
-            var cached=artworkCache.get(entry.item.url);
-            if(cached && cached.expires>now){entry.done=true;paintArtwork(entry,cached.value);return;}
+            var key=artworkKey(entry.item.url,entry.variant),cached=artworkCache.get(key);
+            if(cached && cached.expires>now && cached.source===artworkSource(entry)){entry.done=true;paintArtwork(entry,cached.value);return;}
             if(entry.next>now){next=Math.min(next,entry.next);return;}
-            if(selected.length<12 && !seen.has(entry.item.url)){selected.push(entry.item);seen.add(entry.item.url);}
+            if(selected.length<12 && !seen.has(key)){var record={item:entry.item,variant:entry.variant,key:key,source:artworkSource(entry)};selected.push(record);seen.set(key,record);}
         });
         if(!selected.length){if(isFinite(next))scheduleArtwork(Math.max(40,next-now));return;}
         var generation=artworkGeneration;artworkBusy=true;
-        request("artwork",{items:selected.map(function(item){var value={};["url","title","kind","seriesUrl","image","imageSource","imageSourceUrl","imageAttribution"].forEach(function(key){if(item[key]!==undefined)value[key]=item[key];});return value;})}).then(function(data){
+        request("artwork",{items:selected.map(function(record){var item=record.item,value={},fields=["url","title","kind","seriesUrl","image","imageSource","imageSourceUrl","imageAttribution"];if(record.variant==="backdrop"){value.variant="backdrop";fields=fields.concat(["backdrop","backdropSource","backdropSourceUrl","backdropAttribution"]);}fields.forEach(function(key){if(item[key]!==undefined)value[key]=item[key];});return value;})}).then(function(data){
             if(generation!==artworkGeneration)return;
             var found=new Set();
-            (Array.isArray(data.items)?data.items:[]).forEach(function(value){if(seen.has(value.url)){found.add(value.url);rememberArtwork(value.url,value);}});
-            var pending=new Set(Array.isArray(data.pending)?data.pending:[]),delay=Math.max(500,Math.min(3000,Number(data.retryAfter)||1000));
-            selected.forEach(function(item){if(found.has(item.url))return;if(pending.has(item.url)){artworkEntries.forEach(function(entry){if(entry.item.url===item.url)entry.next=Date.now()+delay;});}else rememberArtwork(item.url,{image:""});});
-        }).catch(function(){if(generation===artworkGeneration)selected.forEach(function(item){rememberArtwork(item.url,{image:""});});}).then(function(){artworkBusy=false;scheduleArtwork(80);});
+            (Array.isArray(data.items)?data.items:[]).forEach(function(value){var key=artworkKey(value.url,value.variant),record=seen.get(key);if(record){found.add(key);rememberArtwork(key,value,record.source);}});
+            var pending=new Set(),legacyPending=new Set(),delay=Math.max(500,Math.min(3000,Number(data.retryAfter)||1000));
+            (Array.isArray(data.pending)?data.pending:[]).forEach(function(value){if(typeof value==="string")legacyPending.add(value);else if(value&&value.url)pending.add(artworkKey(value.url,value.variant));});
+            selected.forEach(function(record){if(found.has(record.key))return;if(pending.has(record.key)||legacyPending.has(record.item.url)){artworkEntries.forEach(function(entry){if(artworkKey(entry.item.url,entry.variant)===record.key)entry.next=Date.now()+delay;});}else rememberArtwork(record.key,{image:"",variant:record.variant},record.source);});
+        }).catch(function(){if(generation===artworkGeneration)selected.forEach(function(record){rememberArtwork(record.key,{image:"",variant:record.variant},record.source);});}).then(function(){artworkBusy=false;scheduleArtwork(80);});
     }
-    window.refreshThumbnails=function(){artworkGeneration++;artworkCache.clear();artworkEntries.forEach(function(entry){entry.done=false;entry.next=0;});scheduleArtwork();};
-    document.addEventListener("visibilitychange",function(){if(!document.hidden)scheduleArtwork();});
+    window.refreshThumbnails=function(){artworkGeneration++;artworkCache.clear();artworkEntries.forEach(function(entry){entry.done=false;entry.next=0;if(entry.hero)entry.variant="backdrop";});scheduleArtwork();};
+    document.addEventListener("visibilitychange",function(){if(!document.hidden){scheduleArtwork();if(route==="home"&&document.getElementById("home-feature"))loadTrending(loadIndex);if(route==="home"||route==="genre")loadGenres();}});
     function timeText(seconds) {
         var minutes = Math.floor(Math.max(0, Number(seconds) || 0) / 60);
         return minutes >= 60 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + " min";
     }
     function card(item, history) {
-        var node = button("", "card", function() {
+        var node = button("", "card " + (history || item.kind === "episode" ? "episode-card" : "poster-card"), function() {
             if (history) play(item, item); else showDetails(item);
         });
         node.setAttribute("aria-label", (history ? "Continue " : "Explore ") + item.title);
@@ -514,61 +529,214 @@
         root.appendChild(row);
         return root;
     }
-    function hero(item) {
+    function browseCatalog() {
+        query = ""; searchPage = null; searchOffset = 0; searchCategory = "all"; setRoute("search", true);
+    }
+    function homeFeatured() {
+        if (trendingData.items.length) return trendingData.items[0];
+        var saved = state.favorites[0] || state.history.filter(function(item) { return safeUrl(item.seriesUrl); })[0];
+        return saved ? normalizeItem(Object.assign({}, saved, { title: saved.seriesTitle || saved.title, url: saved.seriesUrl || saved.url, kind: saved.kind === "episode" ? "series" : saved.kind })) : null;
+    }
+    function paintHero(root, item, ranked) {
+        root.__cwFeatured = item;
+        root.querySelector(".eyebrow").textContent = ranked ? "TRENDING THIS WEEK · WCO" : item ? "FROM YOUR LIST · READY TO EXPLORE" : "YOUR NEXT GOOD WATCH";
+        root.querySelector("h1").textContent = item ? item.title : "Find your next favorite.";
+        root.querySelector("p").textContent = item ? item.description || "Explore the episodes, add it to your list, and settle in for a good watch." : "See what's trending in anime, or find a favorite in the full WCO catalog.";
+        root.querySelector(".primary span").textContent = item ? item.kind === "movie" ? "View movie" : "Explore episodes" : "Find a show";
+        var favorite = root.querySelector(".secondary"); favorite.hidden = !item;
+        if (item) updateFavoriteButton(favorite, item);
+        var holder = root.querySelector(".hero-art-holder"), identity = item ? [item.url,item.image || "",item.backdrop || ""].join("|") : "";
+        if (holder.__cwIdentity !== identity) {
+            holder.__cwIdentity = identity; holder.textContent = ""; root.removeAttribute("data-artwork-variant");
+            if (item) addImage(holder, item, "hero-art", "backdrop");
+            clearTimeout(artworkPruneTimer); artworkPruneTimer = setTimeout(pruneArtwork, 0); scheduleArtwork();
+        }
+    }
+    function hero(item, ranked) {
         var root = el("section", "hero");
+        root.id = "home-feature";
         root.appendChild(el("div", "hero-geometry"));
-        var heroImage=el("div","hero-art-holder");addImage(heroImage,item,"hero-art");root.appendChild(heroImage);
+        root.appendChild(el("div", "hero-art-holder"));
         root.appendChild(el("div", "hero-shade"));
         var copy = el("div", "hero-copy");
-        copy.appendChild(el("span", "eyebrow", "FROM " + provider(currentProvider).name + " · READY TO EXPLORE"));
-        copy.appendChild(el("h1", "", item.title));
-        copy.appendChild(el("p", "", item.description || "Find a new favorite. Browse shows and movies, build your list, and settle in for a good watch."));
+        copy.appendChild(el("span", "eyebrow"));
+        copy.appendChild(el("h1"));
+        copy.appendChild(el("p"));
         var actions = el("div", "actions");
-        actions.appendChild(button(item.kind === "movie" ? "View movie" : "Explore episodes", "button primary", function() {
-            showDetails(item);
+        actions.appendChild(button("Find a show", "button primary", function() {
+            if (root.__cwFeatured) showDetails(root.__cwFeatured); else browseCatalog();
         }, "play"));
-        actions.appendChild(favoriteButton(item));
+        var favorite = button("", "button secondary", function() { if (root.__cwFeatured) toggleFavorite(root.__cwFeatured, favorite); });
+        actions.appendChild(favorite);
         copy.appendChild(actions);
         root.appendChild(copy);
         root.appendChild(el("span", "hero-label", "A WORLD WORTH WATCHING"));
+        paintHero(root, item, ranked);
+        return root;
+    }
+    function trendingShelf() {
+        if (!trendingData.items.length) return el("p", "trending-status", trendingLoaded ? "Weekly anime trends are unavailable right now. The WCO catalog is ready to browse." : "Loading this week's anime trends…");
+        var root = shelf("Trending this week", trendingData.items, false), byline = "AniList community activity";
+        root.classList.add("trending-shelf");
+        var start = Date.parse(trendingData.periodStart), end = Date.parse(trendingData.periodEnd) - 1;
+        if (isFinite(start) && isFinite(end) && end >= start) {
+            var format = { month: "short", day: "numeric", timeZone: "UTC" };
+            byline += " · " + new Date(start).toLocaleDateString(undefined, format) + "–" + new Date(end).toLocaleDateString(undefined, format);
+        }
+        if (trendingData.stale) byline += " · Cached ranking";
+        root.insertBefore(el("p", "trending-meta", byline), root.querySelector(".cards-row"));
+        root.querySelectorAll(".card-image").forEach(function(node, index) {
+            var rank = Number(trendingData.items[index].trendRank);
+            node.appendChild(el("span", "trend-rank", "#" + (isFinite(rank) && rank > 0 && rank <= 1000 ? Math.floor(rank) : index + 1)));
+        });
+        return root;
+    }
+    function homeAnchor() {
+        var active = document.activeElement, anchored = content.contains(active), behavior = main.style.scrollBehavior;
+        main.style.scrollBehavior = "auto"; main.scrollTop = main.scrollTop;
+        var top = anchored ? active.getBoundingClientRect().top : 0, scroll = main.scrollTop;
+        return function() {
+            if (anchored && document.contains(active)) main.scrollTop += active.getBoundingClientRect().top - top; else main.scrollTop = scroll;
+            main.style.scrollBehavior = behavior;
+        };
+    }
+    function paintTrending() {
+        var feature = document.getElementById("home-feature"), slot = document.getElementById("home-trending");
+        if (!feature || !slot || route !== "home" || detailOpen) { homeTrendingDirty = true; return; }
+        var restore = homeAnchor(), active = document.activeElement, item = homeFeatured();
+        homeTrendingDirty = false;
+        if (feature.contains(active) && (feature.__cwFeatured && feature.__cwFeatured.url || "") !== (item && item.url || "")) homeTrendingDirty = true;
+        else paintHero(feature, item, !!trendingData.items.length);
+        if (slot.__cwVersion !== trendingVersion) {
+            if (slot.contains(active)) homeTrendingDirty = true;
+            else { slot.textContent = ""; slot.appendChild(trendingShelf()); slot.__cwVersion = trendingVersion; }
+        }
+        restore();
+    }
+    function loadTrending(token) {
+        if (trendingLoaded && Date.now() < trendingNext) return;
+        if (!trendingPending) trendingPending = request("trending", {}).catch(function() { return { items: [], available: false }; }).then(function(data) { trendingPending = null; return data; });
+        trendingPending.then(function(data) {
+            if (token !== loadIndex || route !== "home") return;
+            var items = feedItems(data);
+            var next = Object.assign({}, data, { items: items }), changed = !trendingLoaded || JSON.stringify(next) !== JSON.stringify(trendingData);
+            trendingData = next; trendingLoaded = true;
+            trendingNext = Date.now() + (items.length && !data.stale ? 300000 : 60000);
+            if (changed) { trendingVersion++; if (detailOpen) homeTrendingDirty = true; else paintTrending(); }
+        });
+    }
+    function genreLabel(type) {
+        var state = genreDomains[type], category = discoveryCategories.filter(function(value) { return value.key === state.key && value.type === type; })[0];
+        return category ? category.label : type === "anime" ? "Isekai" : "Cartoon essentials";
+    }
+    function feedItems(data, limit) {
+        return data.available === false ? [] : itemsFrom(data).filter(function(item) { return /^https:\/\/(?:www\.)?(?:wco\.tv|wcostream\.tv)\//i.test(item.url); }).slice(0, limit || 20);
+    }
+    function genreResults(type, grid) {
+        var root = el("div"), data = genreDomains[type].data, label = genreLabel(type), byline = type === "anime" ? "All-time popular · " + label + " · AniList list popularity" : "Community ratings · " + label + " · TVmaze";
+        var snapshot = Date.parse(data.snapshotAt);
+        if (type === "cartoons" && isFinite(snapshot)) byline += " · Snapshot " + new Date(snapshot).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+        root.appendChild(el("p", "trending-meta", byline + (data.stale ? " · Cached ranking" : "") + (grid && data.items.length ? " · " + data.items.length + " available WCO matches" : "")));
+        if (!data.items.length) {
+            root.appendChild(el("p", "trending-status", data.available === false ? label + " rankings are unavailable right now." : "Loading " + label.toLowerCase() + "…"));
+            return root;
+        }
+        var row = el("div", grid ? "grid genre-grid" : "cards-row");
+        data.items.forEach(function(item, index) {
+            var node = card(item, false), rank = Number(item.trendRank);
+            node.querySelector(".card-image").appendChild(el("span", "trend-rank", "#" + (isFinite(rank) && rank > 0 && rank <= 1000 ? Math.floor(rank) : index + 1)));
+            row.appendChild(node);
+        });
+        root.appendChild(row);
+        return root;
+    }
+    function genreSelect(type) {
+        var select = el("select"), state = genreDomains[type];
+        select.setAttribute("aria-label", type === "anime" ? "Anime category" : "Cartoon collection");
+        discoveryCategories.filter(function(value) { return value.type === type; }).forEach(function(value) { var option = el("option", "", value.label); option.value = value.key; select.appendChild(option); });
+        select.value = state.key;
+        select.addEventListener("change", function() {
+            state.key = select.value; state.data = state.cache[state.key] ? state.cache[state.key].data : { items: [] }; state.version++;
+            select.focus(); paintGenre(type); loadGenre(type);
+        });
+        return select;
+    }
+    function genreSection(type) {
+        var root = el("section", "shelf genre-shelf"), controls = el("div", "genre-controls"), state = genreDomains[type];
+        root.setAttribute("data-discovery-domain", type); controls.appendChild(genreSelect(type));
+        if (!state.viewAll) {
+            state.viewAll = button("View all", "text-button", function() {
+                genreDomain = type; state.homeScroll = main.scrollTop; state.homeTop = state.viewAll.getBoundingClientRect().top; setRoute("genre", true);
+            });
+            state.viewAll.id = type === "anime" ? "genre-view-all" : "cartoon-view-all";
+        }
+        controls.appendChild(state.viewAll);
+        root.appendChild(rowHeading(type === "anime" ? "Anime categories" : "Cartoon collections", undefined, controls));
+        var results = el("div"); results.id = type === "anime" ? "home-genre-results" : "home-cartoon-results"; results.__cwVersion = state.version; results.appendChild(genreResults(type)); root.appendChild(results); state.dirty = false;
+        return root;
+    }
+    function renderGenre() {
+        content.textContent = "";
+        var title = intro(genreLabel(genreDomain) + (genreDomain === "anime" ? " anime" : ""), genreDomain === "anime" ? "Explore the top available WCO matches, ranked by AniList community list popularity." : "A curated WCO cartoon collection, ordered by TVmaze community ratings."); title.id = "genre-intro"; content.appendChild(title);
+        var toolbar = el("div", "toolbar genre-toolbar");
+        toolbar.appendChild(button("Back to Home", "button secondary", function() { setRoute("home", false, true); }, "back"));
+        toolbar.appendChild(genreSelect(genreDomain)); content.appendChild(toolbar);
+        var state = genreDomains[genreDomain], results = el("div"); results.id = "genre-grid-results"; results.__cwVersion = state.version; results.appendChild(genreResults(genreDomain, true)); content.appendChild(results); state.dirty = false;
+        loadGenre(genreDomain);
+    }
+    function paintGenre(type) {
+        var state = genreDomains[type], slot = document.getElementById(route === "genre" ? "genre-grid-results" : type === "anime" ? "home-genre-results" : "home-cartoon-results");
+        if (!slot || !genreVisible(type) || detailOpen || slot.contains(document.activeElement)) { state.dirty = true; return; }
+        state.dirty = false;
+        if (slot.__cwVersion === state.version) return;
+        var restore = homeAnchor();
+        slot.textContent = ""; slot.appendChild(genreResults(type, route === "genre")); slot.__cwVersion = state.version;
+        if (route === "genre") document.querySelector("#genre-intro h1").textContent = genreLabel(type) + (type === "anime" ? " anime" : "");
+        restore();
+        clearTimeout(artworkPruneTimer); artworkPruneTimer = setTimeout(pruneArtwork, 0); scheduleArtwork();
+    }
+    function genreVisible(type) { return route === "home" || route === "genre" && genreDomain === type; }
+    function paintGenres() { Object.keys(genreDomains).forEach(function(type) { if (genreDomains[type].dirty && genreVisible(type)) paintGenre(type); }); }
+    function loadGenres() { if (route === "home") { loadGenre("cartoons"); loadGenre("anime"); } else if (route === "genre") loadGenre(genreDomain); }
+    function loadGenre(type) {
+        if (!genreVisible(type)) return;
+        var state = genreDomains[type], key = state.key, cached = state.cache[key];
+        if (cached && Date.now() < cached.next) {
+            if (state.data !== cached.data) { state.data = cached.data; state.version++; paintGenre(type); }
+            return;
+        }
+        if (genrePending) { genreQueued[type] = true; return; }
+        genrePending = { type: type, key: key };
+        request("trending", { genre: key }).catch(function() { return { items: [], available: false }; }).then(function(data) {
+            genrePending = null;
+            var items = data.genre === key && data.type === type && data.metric === (type === "anime" ? "popularity" : "rating") ? feedItems(data, 50) : []; data = Object.assign({}, data, { items: items, available: !!items.length });
+            state.cache[key] = { data: data, next: Date.now() + (data.items.length && !data.stale ? 300000 : 60000) };
+            if (state.key === key) { var changed = JSON.stringify(state.data) !== JSON.stringify(data); state.data = data; if (changed) { state.version++; if (detailOpen || !genreVisible(type)) state.dirty = true; else paintGenre(type); } }
+            else if (genreVisible(type)) genreQueued[type] = true;
+            Object.keys(genreQueued).forEach(function(queued) { delete genreQueued[queued]; loadGenre(queued); });
+        });
+    }
+    function discoveryShortcuts() {
+        var root = el("div", "discovery-shortcuts");
+        [["Anime", "Anime category"], ["Cartoons", "Cartoon collection"]].forEach(function(value) { root.appendChild(button(value[0], "button secondary", function() { document.querySelector('[aria-label="' + value[1] + '"]').focus(); })); });
+        root.appendChild(button("Movies", "button secondary", function() { query = ""; searchPage = null; searchOffset = 0; searchCategory = "Movies"; setRoute("search", true); }));
         return root;
     }
     function renderHome(data) {
         content.textContent = "";
-        if (catalogInfo.total) {
-            var summary = el("section", "catalog-summary");
-            var copy = el("div");
-            copy.appendChild(el("strong", "", catalogInfo.total.toLocaleString() + " indexed titles"));
-            copy.appendChild(el("span", "", "Cartoons, anime, movies and OVAs from WCO"));
-            summary.appendChild(copy);
-            summary.appendChild(button("Browse full catalog", "button secondary", function() {
-                query = "";
-                searchPage = null;
-                searchOffset = 0;
-                searchCategory = "all";
-                setRoute("search", true);
-            }, "search"));
-            content.appendChild(summary);
-        }
+        content.appendChild(discoveryShortcuts());
         if (catalog.length) {
-            var featured = catalog.filter(function(item) {
-                return !!imageUrl(item.image);
-            })[0] || catalog[0];
-            content.appendChild(hero(featured));
+            content.appendChild(hero(homeFeatured(), !!trendingData.items.length));
         } else {
             var nativeMessage = nativeAvailable() ? "The catalog is still getting ready. Try again in a moment." : "Install Cartoon Watch on your Fire TV to browse its WCO catalog and play videos.";
             var homeAlternatives = [ button("Try again", "button primary", loadHome, "refresh"), sourceButton("wco") ];
             content.appendChild(emptyBox(nativeAvailable() ? "This source needs a moment." : "Your couch. Your cartoons.", nativeMessage, "screen", homeAlternatives, data && data.error));
         }
         if (state.history.length) content.appendChild(shelf("Recently watched", state.history.slice(0, 16), true));
+        var trendingSlot = el("div"); trendingSlot.id = "home-trending"; content.appendChild(trendingSlot); homeTrendingDirty = false; paintTrending();
+        content.appendChild(genreSection("anime")); content.appendChild(genreSection("cartoons"));
         if (catalog.length) {
-            var browse = button("Browse all titles", "text-button", function() {
-                query = "";
-                searchPage = null;
-                searchOffset = 0;
-                searchCategory = "all";
-                setRoute("search", true);
-            }, "search");
+            var browse = button("Browse all titles", "text-button", browseCatalog, "search");
             content.appendChild(shelf("From the WCO catalog", catalog.slice(0, 30), false, browse));
             if (catalog.length > 30) content.appendChild(shelf("More to explore", catalog.slice(30, pageSize), false));
         }
@@ -585,6 +753,7 @@
         var token = ++loadIndex;
         var id = currentProvider;
         loading(content, "Opening the WCO catalog…");
+        loadTrending(token); loadGenres();
         request("home", {
             provider: id
         }).then(function(data) {
@@ -594,7 +763,7 @@
                 catalogInfo = Object.assign({}, catalogInfo, data, {
                     items: undefined
                 });
-                renderProviders();
+                renderStatus();
             }
             renderHome(data);
         }).catch(function(error) {
@@ -807,7 +976,7 @@
                 toast(error.message);
             });
             saveState();
-            renderProviders();
+            renderStatus();
             toast(state.settings.adBlock ? "Ad protection enabled" : "Ad protection disabled for troubleshooting");
         });
         toggle.setAttribute("role", "switch");
@@ -1028,6 +1197,8 @@
         if (route === "list") renderList();
         if (restore) {
             if (returnFocus && document.contains(returnFocus)) returnFocus.focus(); else focusContent();
+            if (route === "home" && homeTrendingDirty) paintTrending();
+            if (route === "home" || route === "genre") paintGenres();
         }
     }
     function play(episode, series) {
@@ -1145,17 +1316,21 @@
     window.refreshState = function() {
         request("getState", {}).then(function(data) {
             adoptState(data);
-            renderProviders();
+            renderStatus();
             if (!detailOpen) {
-                if (route === "home") renderHome({
-                    items: catalog
-                }); else if (route === "list") renderList();
+                if (route === "home") {
+                    renderHome({ items: catalog }); loadTrending(loadIndex); loadGenres();
+                } else if (route === "genre") loadGenres(); else if (route === "list") renderList();
             }
         }).catch(function() {});
     };
     window.handleBack = function() {
         if (detailOpen) {
             closeDetails(true);
+            return true;
+        }
+        if (route === "genre") {
+            setRoute("home", false, true);
             return true;
         }
         if (route !== "home") {
@@ -1245,18 +1420,21 @@
     });
     document.addEventListener("focusin", function(event) {
         keepVisible(event.target);
+        if (homeTrendingDirty && route === "home" && !detailOpen) paintTrending();
+        if ((route === "home" || route === "genre") && !detailOpen) paintGenres();
     });
     document.querySelectorAll(".nav-button").forEach(function(node) {
         node.addEventListener("click", function() {
             setRoute(node.getAttribute("data-route"), true);
         });
     });
-    renderProviders();
+    setInterval(function() { if (route === "home" && !document.hidden && !detailOpen) { loadTrending(loadIndex); loadGenres(); } }, 3600000);
+    renderStatus();
     loading(content, "Making room on the couch…");
     request("getState", {}).then(function(data) {
         adoptState(data);
         currentProvider = "wco";
-        renderProviders();
+        renderStatus();
         setRoute("home", false);
         document.querySelector('[data-route="home"]').focus();
         request("ready",{}).catch(function(){});

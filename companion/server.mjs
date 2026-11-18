@@ -10,6 +10,7 @@ import {MediaStore,HttpError} from './runtime.mjs';
 import {createCompanion} from './service.mjs';
 import {createCapture} from './capture.mjs';
 import {ArtworkStore} from './artwork.mjs';
+import {TrendingStore} from './trending.mjs';
 
 const run=promisify(execFile), root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const work=path.join(root,'work','companion'), assets=path.join(root,'app','src','main','assets');
@@ -59,8 +60,10 @@ async function play(target,base){
   throw new HttpError(502,'No compatible player could be started. Try again later.');
 }
 const artwork=new ArtworkStore({catalog,resolve:details});
-const server=createCompanion({catalog,details,play,media,artwork});
+const queries={weekly:await fs.readFile(path.join(assets,'trending-query.graphql'),'utf8'),genre:await fs.readFile(path.join(assets,'genre-query.graphql'),'utf8')};
+const trending=new TrendingStore({catalog,queries,cacheFile:path.join(work,'discovery.json')});
+const server=createCompanion({catalog,details,play,media,artwork,trending});
 const port=Number(process.env.PORT)||8765;
 server.listen(port,'0.0.0.0',()=>{console.log(`Cartoon Watch companion on port ${port}`);for(const network of Object.values(os.networkInterfaces()))for(const address of network||[])if(address.family==='IPv4'&&!address.internal)console.log(`TV service address: http://${address.address}:${port}`);});
-async function stop(){server.close();artwork.close();for(const child of children)child.kill();if(browser)await browser.close();if(bridge)try{(await bridge).process.kill();}catch{}process.exit();}
+async function stop(){server.close();artwork.close();trending.close();for(const child of children)child.kill();if(browser)await browser.close();if(bridge)try{(await bridge).process.kill();}catch{}process.exit();}
 process.on('SIGINT',stop);process.on('SIGTERM',stop);

@@ -1,0 +1,36 @@
+query GenrePopular($genre: String, $tag: String, $genres: [String], $tagRank: Int) {
+  Page(page: 1, perPage: 50) {
+    media(type: ANIME, isAdult: false, status_not: NOT_YET_RELEASED, format_in: [TV, TV_SHORT, ONA], sort: POPULARITY_DESC, genre: $genre, tag: $tag, genre_in: $genres, minimumTagRank: $tagRank) {
+      id
+      idMal
+      type
+      status
+      format
+      isAdult
+      popularity
+      seasonYear
+      startDate { year }
+      title { romaji english native }
+      coverImage { medium large }
+      bannerImage
+      synonyms
+      genres
+      relations {
+        edges {
+          relationType
+          node {
+            id
+            idMal
+            type
+            status
+            format
+            isAdult
+            startDate { year }
+            title { romaji english native }
+            synonyms
+          }
+        }
+      }
+    }
+  }
+}
