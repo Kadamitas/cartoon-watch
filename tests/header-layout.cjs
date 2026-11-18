@@ -74,9 +74,9 @@ function pageData(args = {}) {
             });
             await context.route("https://app.cartoonwatch.test/**", route => {
                 const name = new URL(route.request().url()).pathname.slice(1) || "index.html";
-                if (![ "index.html", "app.js", "app.css" ].includes(name)) return route.abort();
+                if (![ "index.html", "app.js", "app.css", "brand.svg" ].includes(name)) return route.abort();
                 return route.fulfill({
-                    contentType: name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : "text/html",
+                    contentType: name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : name.endsWith(".svg") ? "image/svg+xml" : "text/html",
                     body: fs.readFileSync(path.join(assets, name))
                 });
             });

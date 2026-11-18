@@ -1,36 +1,18 @@
 import argparse
 import json
 import shutil
-import struct
 import subprocess
-import zlib
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def icon(size):
-    rows = bytearray()
-    for y in range(size):
-        rows.append(0)
-        for x in range(size):
-            color = (17, 22, 35, 255)
-            if size * .16 <= x <= size * .84 and size * .23 <= y <= size * .77:
-                color = (255, 121, 91, 255)
-            if size * .43 <= x <= size * .66 and abs(y - size * .5) <= (size * .66 - x) * .78:
-                color = (17, 22, 35, 255)
-            rows.extend(color)
-    def chunk(kind, data):
-        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
-    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
-
-
 def stage(platform):
     destination = ROOT / 'work' / 'webtv' / platform
     destination.mkdir(parents=True, exist_ok=True)
     assets = ROOT / 'app' / 'src' / 'main' / 'assets'
-    for name in ('index.html', 'app.js', 'app.css', 'NOTICE.txt', 'ARTWORK-NOTICE.txt'):
+    for name in ('index.html', 'app.js', 'app.css', 'brand.svg', 'NOTICE.txt', 'ARTWORK-NOTICE.txt'):
         shutil.copyfile(assets / name, destination / name)
     for name in ('bridge.js', 'tv.css'):
         shutil.copyfile(ROOT / 'clients' / 'webtv' / name, destination / name)
@@ -50,13 +32,13 @@ def stage(platform):
     if platform == 'lg':
         metadata = json.loads((ROOT / 'clients' / 'lg' / 'appinfo.json').read_text(encoding='utf-8'))
         (destination / 'appinfo.json').write_text(json.dumps(metadata, indent=2) + '\n', encoding='utf-8')
-        (destination / 'icon.png').write_bytes(icon(80))
-        (destination / 'large-icon.png').write_bytes(icon(130))
+        shutil.copyfile(ROOT / 'branding' / 'icon-80.png', destination / 'icon.png')
+        shutil.copyfile(ROOT / 'branding' / 'icon-130.png', destination / 'large-icon.png')
     else:
         config = ROOT / 'clients' / 'samsung' / 'config.xml'
         ET.parse(config)
         shutil.copyfile(config, destination / 'config.xml')
-        (destination / 'icon.png').write_bytes(icon(128))
+        shutil.copyfile(ROOT / 'branding' / 'icon-128.png', destination / 'icon.png')
     return destination
 
 

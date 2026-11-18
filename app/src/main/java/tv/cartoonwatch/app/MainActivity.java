@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
             if(path!=null&&path.startsWith("/frame/")) {WebResourceResponse cached=resumeThumbnails.response(uri);return cached==null?blocker.empty():cached;}
             if (path == null || path.equals("/")) path = "/index.html";
             if (!path.matches("/[a-zA-Z0-9_.-]+")) return blocker.empty();
-            try { return new WebResourceResponse(path.endsWith(".css") ? "text/css" : path.endsWith(".js") ? "application/javascript" : "text/html", "UTF-8", getAssets().open(path.substring(1))); }
+            try { return new WebResourceResponse(path.endsWith(".css") ? "text/css" : path.endsWith(".js") ? "application/javascript" : path.endsWith(".svg") ? "image/svg+xml" : "text/html", "UTF-8", getAssets().open(path.substring(1))); }
             catch (Exception e) { return blocker.empty(); }
         }
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return !"app.cartoonwatch.local".equals(request.getUrl().getHost()); }

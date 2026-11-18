@@ -1,5 +1,7 @@
 # Cartoon Watch
 
+![Cartoon Watch](branding/banner.svg)
+
 A remote-friendly WCO catalog with local search, My List, episode browsing, and automatic matching playback fallbacks through AniWave, KissAnime, and HDToday.
 
 The main catalog contains **16,167 unique public WCO links** from the November 17, 2026 snapshot. Android imports it into SQLite and renders 60 titles per page. Movies, cartoons, anime, and OVA are searchable together; episode lists and playback remain live.

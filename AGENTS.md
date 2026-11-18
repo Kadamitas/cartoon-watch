@@ -54,6 +54,8 @@ Preserve native media/voice transport and voice-keyboard input. Samsung public V
 
 ## Repository and evidence
 
+Keep the original CW icon consistent across clients. `tools/generate_branding.cjs` is the design source; see `branding/README.md` for regeneration. Commit the generated vectors, SVG, and platform PNGs so normal Android builds need no browser or image tooling. Serve local SVG assets as `image/svg+xml`.
+
 Generated files belong under `work/` and `outputs/`. Never commit SDKs, node_modules, caches, ADB keys, keystores, certificates, watch history, private device addresses, or credentials. Ignore caches rather than deleting unrelated user files.
 
 A fresh Android clone creates `work/CartoonWatch-debug.keystore`. Keep it locally for subsequent updates. Fresh CI keys cannot replace an installation signed by another key without a deliberate migration. Preserve dependency notices.

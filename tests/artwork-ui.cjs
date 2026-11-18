@@ -40,8 +40,8 @@ async function until(test){for(let attempt=0;attempt<100;attempt++){if(test())re
    await context.route('**/*',route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.hostname!=='app.cartoonwatch.test'){if(request.resourceType()==='image')remoteImages.push(request.url());return route.abort();}
-    const name=url.pathname.slice(1)||'index.html';if(!['index.html','app.js','app.css'].includes(name))return route.abort();
-    return route.fulfill({contentType:name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(path.join(assets,name))});
+    const name=url.pathname.slice(1)||'index.html';if(!['index.html','app.js','app.css','brand.svg'].includes(name))return route.abort();
+    return route.fulfill({contentType:name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':name.endsWith('.svg')?'image/svg+xml':'text/html',body:fs.readFileSync(path.join(assets,name))});
    });
    const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
    images=await page.evaluate(()=>{

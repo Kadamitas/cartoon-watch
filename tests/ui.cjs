@@ -39,13 +39,14 @@ function catalog(args = {}) {
     });
     await context.route('https://app.cartoonwatch.test/**', route => {
       const name = new URL(route.request().url()).pathname.slice(1) || 'index.html';
-      if (!['index.html', 'app.js', 'app.css'].includes(name)) return route.abort();
-      return route.fulfill({ contentType: name.endsWith('.js') ? 'application/javascript' : name.endsWith('.css') ? 'text/css' : 'text/html', body: fs.readFileSync(path.join(base, 'app/src/main/assets', name)) });
+      if (!['index.html', 'app.js', 'app.css', 'brand.svg'].includes(name)) return route.abort();
+      return route.fulfill({ contentType: name.endsWith('.js') ? 'application/javascript' : name.endsWith('.css') ? 'text/css' : name.endsWith('.svg') ? 'image/svg+xml' : 'text/html', body: fs.readFileSync(path.join(base, 'app/src/main/assets', name)) });
     });
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('https://app.cartoonwatch.test/');
     await page.getByRole('button', { name: 'Browse full catalog', exact: true }).waitFor();
+    assert.equal(await page.locator('.brand-mark').evaluate(image => image.complete && image.naturalWidth > 0), true);
     assert.equal(await page.locator('#providers button').count(), 1);
     assert.match(await page.locator('.catalog-summary').innerText(), new RegExp(index.items.length.toLocaleString('en-US') + ' indexed titles'));
     await page.getByRole('button', { name: 'Browse full catalog', exact: true }).click();
