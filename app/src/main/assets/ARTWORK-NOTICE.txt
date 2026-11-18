@@ -1,0 +1,30 @@
+Cartoon Watch artwork metadata
+
+The catalog contains small image URLs and source credits, not bundled cover files.
+Images remain subject to the rights of their respective owners. Provider names
+identify artwork sources and do not imply endorsement of Cartoon Watch.
+
+anime-offline-database
+Contains information from anime-offline-database, maintained by cedya77 as a
+continuation of manami-project's anime-offline-database.
+https://github.com/cedya77/anime-offline-database
+https://github.com/manami-project/anime-offline-database
+
+The AODB-derived artwork URL/title mappings, identifiable by their imageAttribution
+field, are available under the Open Database License 1.0. Individual database
+contents are available under the Database Contents License 1.0. The extracted
+mapping is adapted to WCO title links and normalized titles. Upstream notices and
+the applicable license URIs are retained here and in the catalog's source metadata.
+https://opendatacommons.org/licenses/odbl/1.0/
+https://opendatacommons.org/licenses/dbcl/1.0/
+
+TVmaze
+TVmaze-derived artwork URL/title mappings, identifiable by imageSource TVmaze,
+are adapted from its public animation index and available under CC BY-SA 4.0.
+Each matching catalog item retains a TVmaze source-page link and attribution.
+https://www.tvmaze.com/api
+https://creativecommons.org/licenses/by-sa/4.0/
+
+These source-specific artwork mappings remain separately identifiable. These data
+licenses do not change the licenses of application code, independently sourced
+catalog fields, or private episode screenshots stored only on the user's device.

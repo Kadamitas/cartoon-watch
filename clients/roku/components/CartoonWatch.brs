@@ -29,7 +29,7 @@ sub init()
     m.detailData = invalid
     m.playingEpisode = invalid
     m.intro = invalid
-    m.menu.buttons = ["Browse all", "Search", "Category", "Sort: A-Z", "Previous page", "Next page", "Service address"]
+    m.menu.buttons = ["Browse all", "Search", "Category", "Sort: A-Z", "Previous page", "Next page", "Service address", "Artwork credits"]
     m.menu.ObserveField("buttonSelected", "onMenuSelected")
     m.grid.ObserveField("itemSelected", "onTitleSelected")
     m.episodeList.ObserveField("itemSelected", "onEpisodeSelected")
@@ -155,7 +155,7 @@ sub onMenuSelected(event)
     else if index = 3
         if m.sort = "az" then m.sort = "za" else m.sort = "az"
         if m.sort = "az" then label = "Sort: A-Z" else label = "Sort: Z-A"
-        m.menu.buttons = ["Browse all", "Search", "Category", label, "Previous page", "Next page", "Service address"]
+        m.menu.buttons = ["Browse all", "Search", "Category", label, "Previous page", "Next page", "Service address", "Artwork credits"]
         m.offset = 0
         loadCatalog()
     else if index = 4
@@ -170,6 +170,8 @@ sub onMenuSelected(event)
         end if
     else if index = 6
         showKeyboard("service")
+    else if index = 7
+        showMessage("Artwork credits", "TVmaze: https://www.tvmaze.com/api" + Chr(10) + "https://creativecommons.org/licenses/by-sa/4.0/" + Chr(10) + "anime-offline-database: cedya77 and manami-project" + Chr(10) + "https://github.com/cedya77/anime-offline-database" + Chr(10) + "https://opendatacommons.org/licenses/odbl/1.0/" + Chr(10) + "https://opendatacommons.org/licenses/dbcl/1.0/" + Chr(10) + "Images belong to their respective owners.")
     end if
 end sub
 

@@ -153,6 +153,7 @@
         }
     }
     function imageUrl(value) {
+        if(typeof value==="string" && value.length<=50000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value))return value;
         try {
             var url = new URL(String(value || ""));
             return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
@@ -422,22 +423,58 @@
     function addImage(holder, item, className) {
         var fallback = el("div", "card-art", "cw");
         holder.appendChild(fallback);
-        var src = imageUrl(item.image);
-        if (!src) return;
-        var image = el("img", className || "");
-        image.alt = "";
-        image.loading = "lazy";
-        image.referrerPolicy = "no-referrer";
-        image.addEventListener("load", function() {
-            fallback.hidden = true;
-        });
-        image.addEventListener("error", function() {
-            image.remove();
-            fallback.hidden = false;
-        });
-        image.src = src;
-        holder.appendChild(image);
+        var entry={holder:holder,item:item,fallback:fallback,className:className || "",visible:false,done:false,next:0,attempts:0};
+        artworkEntries.push(entry);
+        if(++artworkAdds%64===0){clearTimeout(artworkPruneTimer);artworkPruneTimer=setTimeout(pruneArtwork,0);}
+        if(!artworkObserver && window.IntersectionObserver)artworkObserver=new IntersectionObserver(function(changes){changes.forEach(function(change){var record=change.target.__cwArtwork;if(record){record.visible=change.isIntersecting;if(record.visible)scheduleArtwork();}});},{rootMargin:"180px"});
+        holder.__cwArtwork=entry;
+        if(artworkObserver)artworkObserver.observe(holder);else {entry.visible=true;scheduleArtwork();}
+        return entry;
     }
+    var artworkEntries=[],artworkCache=new Map(),artworkObserver,artworkTimer,artworkPruneTimer,artworkBusy=false,artworkGeneration=0,artworkAdds=0;
+    function pruneArtwork() {artworkEntries=artworkEntries.filter(function(entry){if(document.contains(entry.holder))return true;if(artworkObserver)artworkObserver.unobserve(entry.holder);return false;});}
+    function scheduleArtwork(delay) {clearTimeout(artworkTimer);artworkTimer=setTimeout(loadArtwork,delay || 40);}
+    function paintArtwork(entry,value) {
+        var src=imageUrl(value.image);
+        if(!src){if(entry.image)entry.image.remove();entry.image=null;entry.fallback.hidden=false;return;}
+        if(entry.image && entry.image.src===src)return;
+        if(!entry.image){
+            var image=el("img",entry.className);image.alt="";image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";
+            image.addEventListener("load",function(){entry.fallback.hidden=true;});
+            image.addEventListener("error",function(){image.remove();entry.image=null;entry.fallback.hidden=false;if(entry.attempts++<1){artworkCache.delete(entry.item.url);entry.done=false;entry.next=Date.now()+1000;scheduleArtwork(1000);}});
+            entry.image=image;entry.holder.appendChild(image);
+        }
+        entry.image.src=src;
+        if(value.imageSource)entry.holder.setAttribute("data-artwork-source",value.imageSource);
+    }
+    function rememberArtwork(url,value) {
+        artworkCache.delete(url);artworkCache.set(url,{value:value,expires:Date.now()+(value.image?300000:600000)});
+        while(artworkCache.size>160)artworkCache.delete(artworkCache.keys().next().value);
+        artworkEntries.forEach(function(entry){if(entry.item.url===url){entry.done=true;paintArtwork(entry,value);}});
+    }
+    function loadArtwork() {
+        pruneArtwork();
+        if(artworkBusy || document.hidden)return;
+        var now=Date.now(),selected=[],seen=new Set(),next=Infinity;
+        artworkEntries.forEach(function(entry){
+            if(entry.done || !entry.visible)return;
+            var cached=artworkCache.get(entry.item.url);
+            if(cached && cached.expires>now){entry.done=true;paintArtwork(entry,cached.value);return;}
+            if(entry.next>now){next=Math.min(next,entry.next);return;}
+            if(selected.length<12 && !seen.has(entry.item.url)){selected.push(entry.item);seen.add(entry.item.url);}
+        });
+        if(!selected.length){if(isFinite(next))scheduleArtwork(Math.max(40,next-now));return;}
+        var generation=artworkGeneration;artworkBusy=true;
+        request("artwork",{items:selected.map(function(item){var value={};["url","title","kind","seriesUrl","image","imageSource","imageSourceUrl","imageAttribution"].forEach(function(key){if(item[key]!==undefined)value[key]=item[key];});return value;})}).then(function(data){
+            if(generation!==artworkGeneration)return;
+            var found=new Set();
+            (Array.isArray(data.items)?data.items:[]).forEach(function(value){if(seen.has(value.url)){found.add(value.url);rememberArtwork(value.url,value);}});
+            var pending=new Set(Array.isArray(data.pending)?data.pending:[]),delay=Math.max(500,Math.min(3000,Number(data.retryAfter)||1000));
+            selected.forEach(function(item){if(found.has(item.url))return;if(pending.has(item.url)){artworkEntries.forEach(function(entry){if(entry.item.url===item.url)entry.next=Date.now()+delay;});}else rememberArtwork(item.url,{image:""});});
+        }).catch(function(){if(generation===artworkGeneration)selected.forEach(function(item){rememberArtwork(item.url,{image:""});});}).then(function(){artworkBusy=false;scheduleArtwork(80);});
+    }
+    window.refreshThumbnails=function(){artworkGeneration++;artworkCache.clear();artworkEntries.forEach(function(entry){entry.done=false;entry.next=0;});scheduleArtwork();};
+    document.addEventListener("visibilitychange",function(){if(!document.hidden)scheduleArtwork();});
     function timeText(seconds) {
         var minutes = Math.floor(Math.max(0, Number(seconds) || 0) / 60);
         return minutes >= 60 ? Math.floor(minutes / 60) + "h " + minutes % 60 + "m" : minutes + " min";
@@ -480,16 +517,7 @@
     function hero(item) {
         var root = el("section", "hero");
         root.appendChild(el("div", "hero-geometry"));
-        if (imageUrl(item.image)) {
-            var art = el("img", "hero-art");
-            art.src = imageUrl(item.image);
-            art.alt = "";
-            art.referrerPolicy = "no-referrer";
-            art.addEventListener("error", function() {
-                art.remove();
-            });
-            root.appendChild(art);
-        }
+        var heroImage=el("div","hero-art-holder");addImage(heroImage,item,"hero-art");root.appendChild(heroImage);
         root.appendChild(el("div", "hero-shade"));
         var copy = el("div", "hero-copy");
         copy.appendChild(el("span", "eyebrow", "FROM " + provider(currentProvider).name + " · READY TO EXPLORE"));
@@ -801,15 +829,24 @@
         panel.appendChild(settingRow("Playback fallbacks", "WCO is the catalog. Other sources are tried automatically when its video cannot play.", sourceSelect));
         var clear = button("Clear history", "button secondary", function() {
             state.history = [];
+            window.refreshThumbnails();
+            request("clearHistory",{}).catch(function(){toast("Could not clear the saved episode images.");});
             saveState();
             historyDirty = true;
             toast("Watch history cleared on this TV");
         }, "refresh");
         panel.appendChild(settingRow("Watch history", "Recently opened episodes and available playback progress are stored on this TV.", clear));
+        panel.appendChild(settingRow("Thumbnails", "Small series covers. Watched episodes use a private snapshot saved on pause or exit; missing captures use the series cover.", el("span","setting-value","Low resolution")));
+        var credits=el("div","artwork-credits");credits.hidden=true;
+        var creditsButton=button("View credits","button secondary",function(){credits.hidden=!credits.hidden;creditsButton.setAttribute("aria-expanded",String(!credits.hidden));});
+        creditsButton.setAttribute("aria-expanded","false");
+        panel.appendChild(settingRow("Artwork credits", "TVmaze and anime-offline-database provide cover metadata. Artwork belongs to its original owners.",creditsButton));
+        ["TVmaze: https://www.tvmaze.com/api","TVmaze data: CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0/","anime-offline-database: https://github.com/cedya77/anime-offline-database — continuation of https://github.com/manami-project/anime-offline-database","Adapted anime artwork mappings: ODbL 1.0 — https://opendatacommons.org/licenses/odbl/1.0/ ; DbCL 1.0 — https://opendatacommons.org/licenses/dbcl/1.0/","Episode snapshots remain private on this device."].forEach(function(line){credits.appendChild(el("p","",line));});
+        panel.appendChild(credits);
         panel.appendChild(settingRow("Source browser", "Open the selected original website when needed.", button("Open browser", "button secondary", function() {
             openSource(sourceSelect.value);
         }, "open")));
-        panel.appendChild(settingRow("Cartoon Watch", "Built for Fire TV. No Cartoon Watch account is required.", el("span", "setting-value", "Version 0.3.0")));
+        panel.appendChild(settingRow("Cartoon Watch", "Built for Fire TV. No Cartoon Watch account is required.", el("span", "setting-value", "Version 0.4.0")));
         content.appendChild(panel);
         content.appendChild(el("p", "settings-note", "Cartoon Watch is an independent browser and catalog interface. Availability, ads, playback, and any access requirements are controlled by each source. Progress is saved when the embedded player makes it available."));
     }
@@ -833,7 +870,7 @@
             if (token !== detailIndex || !detailOpen) return;
             var normalized = normalizeItem(Object.assign({}, item, data, {
                 title: data.title || item.title,
-                image: data.image || item.image,
+                image: item.image || data.image,
                 description: data.description || item.description,
                 url: item.url,
                 provider: item.provider,
@@ -843,7 +880,13 @@
             normalized.episodes = (Array.isArray(data.episodes) ? data.episodes : []).map(function(episode) {
                 return normalizeItem(Object.assign({}, episode, {
                     provider: item.provider,
-                    image: episode.image || normalized.image
+                    kind:"episode",
+                    seriesTitle:normalized.title,
+                    seriesUrl:normalized.url,
+                    image:normalized.image,
+                    imageSource:normalized.imageSource || (normalized.image?"WCO":""),
+                    imageSourceUrl:normalized.imageSourceUrl || normalized.url,
+                    imageAttribution:normalized.imageAttribution || "Artwork provided by WCO"
                 }));
             }).filter(Boolean);
             normalized.genres = Array.isArray(data.genres) ? data.genres : [];
@@ -959,6 +1002,7 @@
                     play(episode, item);
                 });
                 var match = episode.title.match(/(?:episode|\bep\.?|\be)\s*(\d+(?:\.\d+)?)/i);
+                var art=el("span","episode-art");addImage(art,episode);node.appendChild(art);
                 node.appendChild(el("span", "episode-number", match ? match[1] : (index < 9 ? "0" : "") + String(index + 1)));
                 node.appendChild(el("span", "episode-label", episode.title));
                 node.appendChild(icon("play"));
@@ -1029,7 +1073,7 @@
             state.history = state.history.slice(0, 80);
             historyDirty = true;
             saveState();
-            if (!detailOpen && route === "home") {
+            if (!detailOpen && route === "home" && !document.hidden) {
                 renderHome({
                     items: catalog
                 });

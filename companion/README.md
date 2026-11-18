@@ -28,10 +28,13 @@ The LAN API is:
 | `GET /health` | App name, version, ready status |
 | `GET /api/catalog?q=&category=all&sort=az&offset=0&limit=60` | Indexed WCO items, total, categories, pagination |
 | `GET /api/details?url=SOURCE_TITLE_URL` | Title details and episode list |
+| `POST /api/artwork` | At most 12 visible titles, small covers, source credits, and pending lookups |
 | `POST /api/play` | Opaque stream address, format, duration, source, supplied subtitles/intro |
 | `GET` or `HEAD /stream/SESSION/RESOURCE` | Proxied media, HLS playlist, key, segment, or subtitle |
 
 The play JSON contains `title`, `url`, `seriesTitle`, `seriesUrl`, `kind`, and optional `number`, `season`, and `resumeSeconds`. Error responses contain `error`. Keep this service on your local network.
+
+Artwork requests send `{ "items": [...] }` and return `items`, `pending`, and `retryAfter`. Results retain each requested `url` and include `image`, `imageSource`, `imageSourceUrl`, and `imageAttribution`. Series and movies use the matched catalog's small metadata thumbnails. Unknown series can resolve their real WCO poster with two concurrent lookups and a bounded queue. Other image sources must pass a 512KB, 240×360-pixel check. Episode lookups reuse an explicit parent series; individual episode pages are not fetched for cover art. Artwork metadata is cached without bundling pictures in the app. Attribution is included in `ARTWORK-NOTICE.txt` inside the app assets.
 
 Run the local API and proxy fixtures with:
 

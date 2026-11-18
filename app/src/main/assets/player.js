@@ -44,7 +44,7 @@
             v.addEventListener("ended", window.CWPlayerTick);
         }
         try {
-            if (window.PlayerEvents && isFinite(v.currentTime) && isFinite(v.duration)) window.PlayerEvents.report(String((window.CW_CONFIG || {}).session || ""), v.currentTime, v.duration, v.paused, v.played.length > 0);
+            if (window.PlayerEvents && isFinite(v.currentTime) && isFinite(v.duration)) window.PlayerEvents.report(String((window.CW_CONFIG || {}).session || ""), v.currentTime, v.duration, v.paused, v.played.length > 0, v.readyState>=2&&!v.seeking);
         } catch (_) {}
     };
     window.CWControl = function(key, value) {

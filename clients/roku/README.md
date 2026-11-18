@@ -23,6 +23,8 @@ Search uses Roku's voice-capable standard keyboard. With a supported Roku voice 
 
 Native playback depends on Roku-supported HLS/MP4 media and codecs. Embedded captions are handled by Roku; supported SRT/TTML/DFXP sidecars are passed through. Browser-only players and incompatible media may remain unavailable.
 
+Catalog cards use small series/movie cover URLs supplied by the companion. **Artwork credits** in the menu lists TVmaze and anime-offline-database source/license links. Roku does not capture private episode frames; it uses the series-cover fallback where available. [Artwork notice](../../app/src/main/assets/ARTWORK-NOTICE.txt)
+
 ## Validate on a computer
 
 Run `npm ci` and `npm run check` from `clients/roku`, then run `python clients/roku/tests/test_tooling.py` from the repository root. Validation compiles BrightScript/SceneGraph, executes transport and episode-selection logic in the BrightScript interpreter, checks the archive, and exercises upload against a local Digest-authenticated fixture. No Roku is contacted by these checks.

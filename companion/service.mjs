@@ -4,7 +4,7 @@ import {HttpError,PlayQueue,readBody} from './runtime.mjs';
 const normalize=value=>String(value||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 function json(response,status,value){const body=JSON.stringify(value);response.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','content-length':Buffer.byteLength(body)});response.end(body);}
 
-export function createCompanion({catalog,details,play,media,queue=new PlayQueue()}){
+export function createCompanion({catalog,details,play,media,artwork,queue=new PlayQueue()}){
   const records=catalog.items.map(item=>({...item,key:normalize(item.title)})),categories=catalog.coverage.map(item=>item.category),cached=new Map(),pending=new Map();
   async function cachedDetails(url){
     if(!url||url.length>2048)throw new HttpError(400,'A source title address is required');
@@ -20,6 +20,11 @@ export function createCompanion({catalog,details,play,media,queue=new PlayQueue(
       const base=`http://${request.headers.host}`,url=new URL(request.url,base),method=request.method;
       const stream=url.pathname.match(/^\/stream\/([a-f0-9]{36})\/([a-f0-9]{32})$/);
       if(stream){if(!['GET','HEAD'].includes(method))throw new HttpError(405,'Method not allowed');await media.proxy(request,response,stream,base,url.searchParams.get('format'));return;}
+      if(url.pathname==='/api/artwork'){
+        if(method!=='POST')throw new HttpError(405,'Method not allowed');
+        const payload=await readBody(request);if(!Array.isArray(payload.items)||payload.items.length>12)throw new HttpError(400,'Artwork requests accept at most 12 titles');
+        json(response,200,artwork?artwork.lookup(payload.items):{items:[],pending:[],retryAfter:1000});return;
+      }
       if(url.pathname==='/api/play'){
         if(method!=='POST')throw new HttpError(405,'Method not allowed');
         const target=await readBody(request);if(typeof target.url!=='string'||target.url.length>2048||typeof target.title!=='string'||target.title.length>400)throw new HttpError(400,'A title and source address are required');

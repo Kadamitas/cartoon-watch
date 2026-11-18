@@ -9,6 +9,7 @@ import {chromium} from 'playwright';
 import {MediaStore,HttpError} from './runtime.mjs';
 import {createCompanion} from './service.mjs';
 import {createCapture} from './capture.mjs';
+import {ArtworkStore} from './artwork.mjs';
 
 const run=promisify(execFile), root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const work=path.join(root,'work','companion'), assets=path.join(root,'app','src','main','assets');
@@ -19,6 +20,7 @@ const domains=['wcostream.tv','wco.tv','aniwave.gr','kissanime.tv.in','hdtoday.o
 const providerFor=value=>{let url;try{url=new URL(value);}catch{throw new HttpError(400,'Invalid source address');}const host=url.hostname.replace(/^(www|m)\./,'');if(!/^https?:$/.test(url.protocol)||url.username||url.password||url.port||!domains.includes(host))throw new HttpError(400,'Unsupported source');return host==='wco.tv'||host==='wcostream.tv'?'wcostream':host==='aniwave.gr'?'aniwave':host==='kissanime.tv.in'?'kissanime':'hdtoday';};
 const scriptNames=['aniwave-skips.js','frame-guard.js','player.js'];
 const scripts=await Promise.all(scriptNames.map(name=>fs.readFile(path.join(assets,name),'utf8')));
+scripts[2]=await fs.readFile(path.join(assets,'quality.js'),'utf8')+scripts[2];
 const nativeBlocker=await fs.readFile(path.join(root,'app','src','main','java','tv','cartoonwatch','app','AdBlocker.java'),'utf8');
 const adHosts=[...nativeBlocker.split('Arrays.asList(')[1].split('));')[0].matchAll(/"([^"]+)"/g)].map(value=>value[1]);
 const blocked=url=>{try{const u=new URL(url);return adHosts.some(host=>u.hostname===host||u.hostname.endsWith('.'+host))||(/(^|\.)wcostream\.com$/.test(u.hostname)&&u.pathname==='/inc/js/adblock-detector-wcostream.js');}catch{return false;}};
@@ -56,8 +58,9 @@ async function play(target,base){
   }
   throw new HttpError(502,'No compatible player could be started. Try again later.');
 }
-const server=createCompanion({catalog,details,play,media});
+const artwork=new ArtworkStore({catalog,resolve:details});
+const server=createCompanion({catalog,details,play,media,artwork});
 const port=Number(process.env.PORT)||8765;
 server.listen(port,'0.0.0.0',()=>{console.log(`Cartoon Watch companion on port ${port}`);for(const network of Object.values(os.networkInterfaces()))for(const address of network||[])if(address.family==='IPv4'&&!address.internal)console.log(`TV service address: http://${address.address}:${port}`);});
-async function stop(){server.close();for(const child of children)child.kill();if(browser)await browser.close();if(bridge)try{(await bridge).process.kill();}catch{}process.exit();}
+async function stop(){server.close();artwork.close();for(const child of children)child.kill();if(browser)await browser.close();if(bridge)try{(await bridge).process.kill();}catch{}process.exit();}
 process.on('SIGINT',stop);process.on('SIGTERM',stop);

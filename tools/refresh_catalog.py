@@ -130,7 +130,8 @@ def validate(data):
 def refresh(output, fixture=None, allow_shrink=False):
     previous = json.loads(ASSET.read_text(encoding="utf-8")) if ASSET.is_file() else {}
     old_counts = {row["category"]: row["records"] for row in previous.get("coverage", [])}
-    old_images = {item["url"]: item.get("image", "") for item in previous.get("items", []) if item.get("image")}
+    artwork_fields = ("image", "imageSource", "imageSourceUrl", "imageAttribution")
+    old_artwork = {item["url"]: item for item in previous.get("items", []) if item.get("image")}
     with ThreadPoolExecutor(max_workers=3) as pool:
         lists = list(pool.map(lambda path: collect(path, fixture), LISTS))
     records = {}
@@ -149,10 +150,16 @@ def refresh(output, fixture=None, allow_shrink=False):
                 if priorities[item["kind"]] > priorities[existing["kind"]]:
                     existing["kind"] = item["kind"]
             else:
-                item["image"] = old_images.get(item["url"], "")
                 records[item["url"]] = item
+    for item in records.values():
+        old = old_artwork.get(item["url"])
+        if old and " ".join(old["title"].split()).casefold() == " ".join(item["title"].split()).casefold() and old["kind"] == item["kind"]:
+            item.update({field: old[field] for field in artwork_fields if field in old})
     now = datetime.now(timezone.utc)
     data = {"version": "wco-" + now.date().isoformat(), "generatedAt": now.isoformat(timespec="seconds").replace("+00:00", "Z"), "provider": "wcostream", "sourceFamily": ["wco.tv", "wcostream.tv"], "coverage": coverage, "items": sorted(records.values(), key=lambda item: item["title"].casefold())}
+    if isinstance(previous.get("artwork"), dict):
+        data["artwork"] = dict(previous["artwork"])
+        data["artwork"].update(series=sum(item["kind"] == "series" and bool(item.get("image")) for item in data["items"]), movies=sum(item["kind"] == "movie" and bool(item.get("image")) for item in data["items"]))
     count = validate(data)
     if not allow_shrink and count < len(previous.get("items", [])) * 0.9:
         raise RuntimeError("Total catalog shrank by more than 10%; snapshot left unchanged")

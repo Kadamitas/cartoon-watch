@@ -8,6 +8,16 @@ Keep source/media links internal. Use the source's real skip control or valid ti
 
 Write concise, performant code without comments. Keep licenses in separate notice files. Use SQLite queries, streaming catalog imports, 60-title pages, bounded caches/network work, cancellation, and stale-session rejection. Do not render the entire catalog or fetch every episode/video during indexing.
 
+Series covers and episode thumbnails are different. Keep a static cover for each matched series/movie. The URL-only artwork snapshot has 6,874 series and 1,329 movie matches with source URLs and credits; never guess ambiguous remakes. Use `tools/enrich_artwork.py` for developer-side metadata refresh, preserve all four image/provenance fields during catalog refresh, and retain `ARTWORK-NOTICE.txt`. No individual episode artwork belongs in the catalog asset.
+
+Watched episodes may keep one device-private frame from pause or normal exit. Use the series cover when capture is unavailable or playback ends abruptly. Native Android frames preserve aspect ratio within 160×90/JPEG55, bounded to 64 files/1 MiB; native covers are at most 240×360/JPEG65, bounded to 256 files/8 MiB. HTML5 LG/Samsung frames are 192×108 with a private 1 MiB limit; Roku/Samsung AVPlay use the series-cover fallback. Clear history must delete private episode frames and history, preserve favorites/static covers, and prevent a resumed-then-abruptly-killed session from reusing a stale thumbnail. Never upload screenshots, commit them, or put them in the public catalog. Use public capture APIs on the app's own visible video layer; SurfaceView/TextureView capture can be needed when Window copying returns a blank frame.
+
+Android playback starts with the manual cursor off. Preserve the prominent, orange-focused center Pause/Resume control and single-Select playback behavior; Menu enables the toolbar and optional manual cursor. Explicit media play/pause must remain idempotent.
+
+Keep the header and focus rings within the actual viewport during scrolling and resizing. Maintain responsive safe insets and verify 640×360, 960×540, 1280×720, 1920×1080 and 3840×2160, including provider refocus after deep catalog scrolling. Do not change TV picture calibration or hardcode one model's scale.
+
+Select the highest quality actually offered through supported site-player APIs or visible quality controls. Keep real decoded dimensions separate from the TV's panel resolution. Never fabricate a 4K rendition or bypass provider access controls; a source offering only 800p remains 800p.
+
 ## First action for a new TV
 
 Identify the actual TV platform first. Ask for its model/OS when unknown while preparing independent host work. Never reuse the original TV's private address, port, model, density, or WebView assumptions.
@@ -32,11 +42,11 @@ Official Android setup: [Amazon](https://developer.amazon.com/docs/fire-tv/conne
 6. For Roku/LG/Samsung, start the LAN companion, obtain the TV's real developer connection, build the client package, and follow its installation/signing instructions. Use the companion's printed LAN service URL, not `localhost` on the TV. Keep the companion running during playback.
 7. Validate on the intended device when available. Remove temporary debugging forwards and leave the app at its catalog. Missing pairing, authorization, credentials, or device selection requires the minimum necessary user input while independent preparation continues.
 
-For the shared catalog UI, install the companion's dependencies/browser, then run `node tests/ui.cjs` from the root. It checks real-index-backed UI fixtures at 960×540 and 1920×1080; it does not verify provider streaming. `PLAYWRIGHT_EXECUTABLE_PATH` can select an existing browser. Use the platform client READMEs for their additional checks.
+For the shared catalog UI, install the companion's dependencies/browser, then run `node tests/ui.cjs` from the root. It checks real-index-backed UI fixtures at 960×540 and 1920×1080; it does not verify provider streaming. `PLAYWRIGHT_EXECUTABLE_PATH` can select an existing browser. Run `node tests/header-layout.cjs`, `node tests/artwork-ui.cjs` and `node tests/quality.cjs` for responsive layout, thumbnail state and offered-quality fixtures. Use the platform client READMEs for their additional checks.
 
 ## Project map and voice
 
-`app/` contains Android Java and the bundled UI. `build.py`/`build.ps1` fetch verified build dependencies; `install.py` inspects/installs Android. `tools/refresh_catalog.py` refreshes the public WCO metadata snapshot. `companion/` provides LAN catalog and compatible-stream resolution for `clients/roku/`, `clients/lg/`, and `clients/samsung/`; `clients/webtv/` shares LG/Samsung UI and packaging.
+`app/` contains Android Java and the bundled UI. `build.py`/`build.ps1` fetch verified build dependencies; `install.py` inspects/installs Android. `tools/refresh_catalog.py` refreshes the public WCO metadata snapshot; `tools/enrich_artwork.py` maintains small, attributable cover URLs without image assets. `companion/` provides LAN catalog and compatible-stream resolution for `clients/roku/`, `clients/lg/`, and `clients/samsung/`; `clients/webtv/` shares LG/Samsung UI and packaging.
 
 Start the companion with `npm install`, `npm run setup`, and `npm start` from `companion/`. Its default port is 8765; use the actual LAN address it prints. Roku, LG, and Samsung cannot embed the Android website player, so verify the resolved stream's native codec/player compatibility.
 

@@ -54,6 +54,8 @@ public class MainActivity extends Activity {
     private final CatalogRepository catalog = new CatalogRepository();
     private final PlaybackResolver resolver = new PlaybackResolver(catalog);
     private CatalogIndex catalogIndex;
+    private ArtworkRepository artwork;
+    private ResumeThumbnails resumeThumbnails;
     private final AdBlocker blocker = new AdBlocker();
     private FrameLayout root, browserFrame;
     private LinearLayout playerPanel, toolbar;
@@ -61,27 +63,29 @@ public class MainActivity extends Activity {
     private View fullscreen;
     private WebChromeClient.CustomViewCallback fullscreenCallback;
     private TextView playerStatus, playbackMessage;
-    private Button cursorButton, shieldButton;
+    private Button cursorButton, shieldButton,playPauseButton;
     private Cursor cursor;
     private SharedPreferences preferences;
     private VoiceControls voice;
     private boolean homeReady;
     private final java.util.ArrayDeque<String> pendingSearches=new java.util.ArrayDeque<>();
     private JSONObject state, currentItem, requestedEpisode, pendingAttempt;
-    private String playerScript, frameGuardScript, siteSkipsScript;
+    private String playerScript, frameGuardScript, siteSkipsScript,qualityScript;
     private ScriptHandler frameGuardHandle;
     private boolean frameGuardSupported;
-    private boolean cursorMode = true, toolbarVisible = true, closed;
+    private boolean cursorMode, toolbarVisible = true, closed;
     private float pointerX, pointerY;
     private long lastProgressSave;
     private int playSession, fallbackIndex;
     private long attemptStarted, lastPlaybackAt;
-    private double lastPosition;
+    private double lastPosition,lastDuration;
     private boolean playbackConfirmed, metadataSeen, mediaPaused, resolving, exhausted, foreground, lastSavedPaused;
+    private boolean framePlaying,frameReady,waitingPausedFrame,closingPlayer;
     private Future<?> resolutionTask;
     private Runnable fallbackDeadline;
     private final String[] fallbackProviders={"aniwave","kissanime","hdtoday"};
     private final Runnable hideCursor = () -> { if(cursor!=null) cursor.setVisibility(View.INVISIBLE); };
+    private final Runnable hidePlaybackButton=() -> {if(playPauseButton!=null&&!mediaPaused&&!toolbarVisible){playPauseButton.setVisibility(View.GONE);if(player!=null)player.requestFocus();}};
     private final Runnable poll = new Runnable() {
         @Override public void run() {
             if (!closed) {
@@ -101,6 +105,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         preferences = getSharedPreferences("cartoonwatch", MODE_PRIVATE);
         catalogIndex=new CatalogIndex(this);
+        artwork=new ArtworkRepository(this);
+        resumeThumbnails=new ResumeThumbnails(this);
         try { state = new JSONObject(preferences.getString("state", "{}")); } catch (Exception e) { state = new JSONObject(); }
         try {
             if (!state.has("favorites")) state.put("favorites", new JSONArray());
@@ -109,6 +115,7 @@ public class MainActivity extends Activity {
             state.getJSONObject("settings").put("provider","wco");
             blocker.enabled = state.getJSONObject("settings").optBoolean("adBlock", true);
             playerScript = readAsset("player.js");
+            qualityScript=readAsset("quality.js");
             frameGuardScript = readAsset("frame-guard.js");
             siteSkipsScript = readAsset("aniwave-skips.js");
         } catch (Exception e) { playerScript = ""; }
@@ -145,6 +152,8 @@ public class MainActivity extends Activity {
                 return blocker.shouldBlock(uri.toString()) ? blocker.empty() : null;
             }
             String path = uri.getPath();
+            if(path!=null&&path.startsWith("/art/")) {WebResourceResponse cached=artwork.open(path);return cached==null?blocker.empty():cached;}
+            if(path!=null&&path.startsWith("/frame/")) {WebResourceResponse cached=resumeThumbnails.response(uri);return cached==null?blocker.empty():cached;}
             if (path == null || path.equals("/")) path = "/index.html";
             if (!path.matches("/[a-zA-Z0-9_.-]+")) return blocker.empty();
             try { return new WebResourceResponse(path.endsWith(".css") ? "text/css" : path.endsWith(".js") ? "application/javascript" : "text/html", "UTF-8", getAssets().open(path.substring(1))); }
@@ -200,8 +209,9 @@ public class MainActivity extends Activity {
             toast("Provider session reset. Your watch list is saved.");
         });
         addButton("Fit player", () -> { player.evaluateJavascript("window.CWZoomPlayer&&window.CWZoomPlayer(true)", null); showToolbar(false); });
-        cursorButton = addButton("Cursor: on", () -> {
-            cursorMode = !cursorMode; cursorButton.setText(cursorMode ? "Cursor: on" : "Page mode");
+        cursorButton = addButton("Cursor: off", () -> {
+            cursorMode = !cursorMode; cursorButton.setText(cursorMode ? "Cursor: on" : "Cursor: off");
+            playPauseButton.setVisibility(View.GONE);
             cursor.setVisibility(cursorMode ? View.VISIBLE : View.GONE); showToolbar(false);
         });
         shieldButton = addButton("Shield: on", () -> {
@@ -232,6 +242,11 @@ public class MainActivity extends Activity {
         browserFrame.addView(cursor,new FrameLayout.LayoutParams(-1,-1));
         playerPanel.addView(browserFrame,new LinearLayout.LayoutParams(-1,0,1));
         root.addView(playerPanel,new FrameLayout.LayoutParams(-1,-1));
+        playPauseButton=new Button(this);playPauseButton.setTextColor(Color.WHITE);playPauseButton.setTextSize(22);playPauseButton.setAllCaps(false);
+        android.graphics.drawable.GradientDrawable playBackground=new android.graphics.drawable.GradientDrawable();playBackground.setColor(Color.argb(235,18,24,36));playBackground.setCornerRadius(dp(14));playBackground.setStroke(dp(4),Color.rgb(255,121,91));playPauseButton.setBackground(playBackground);
+        playPauseButton.setOnFocusChangeListener((view,focused)->playBackground.setStroke(dp(focused?4:1),focused?Color.rgb(255,121,91):Color.GRAY));
+        playPauseButton.setOnClickListener(view->{boolean paused=!playPauseButton.isActivated();mediaControl(paused?"pause":"play",0);showPlaybackButton(paused);});
+        root.addView(playPauseButton,new FrameLayout.LayoutParams(Math.min(dp(220),getResources().getDisplayMetrics().widthPixels*2/5),dp(70),android.view.Gravity.CENTER));playPauseButton.setVisibility(View.GONE);
         playerPanel.setVisibility(View.GONE);
         player.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -308,7 +323,7 @@ public class MainActivity extends Activity {
     }
     private void injectPlayer() {
         double resume=currentItem==null?0:currentItem.optDouble("resumeSeconds",currentItem.optDouble("currentTime",0));
-        player.evaluateJavascript("window.CW_CONFIG={adBlock:"+blocker.enabled+",resumeSeconds:"+resume+",session:'"+playSession+"',autoPlay:true,crossFrame:"+frameGuardSupported+"};"+(frameGuardSupported?"":siteSkipsScript+frameGuardScript)+playerScript,null);
+        player.evaluateJavascript("window.CW_CONFIG={adBlock:"+blocker.enabled+",resumeSeconds:"+resume+",session:'"+playSession+"',autoPlay:true,crossFrame:"+frameGuardSupported+"};"+(frameGuardSupported?"":siteSkipsScript+frameGuardScript)+qualityScript+playerScript,null);
     }
     private void configureFrameGuard() {
         if(frameGuardHandle!=null) { frameGuardHandle.remove();frameGuardHandle=null; }
@@ -316,7 +331,7 @@ public class MainActivity extends Activity {
         if(!frameGuardSupported || frameGuardScript==null) return;
         double resume=currentItem==null?0:currentItem.optDouble("resumeSeconds",currentItem.optDouble("currentTime",0));
         String config="window.CW_CONFIG={adBlock:"+blocker.enabled+",resumeSeconds:"+resume+",session:'"+playSession+"',crossFrame:true,autoPlay:"+(currentItem!=null&&currentItem.has("seriesTitle"))+"};";
-        String script=config+siteSkipsScript+frameGuardScript+"\n(function(){function boot(){"+playerScript+"}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();";
+        String script=config+siteSkipsScript+frameGuardScript+"\n(function(){function boot(){"+qualityScript+playerScript+"}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();";
         frameGuardHandle=WebViewCompat.addDocumentStartJavaScript(player,script,java.util.Collections.singleton("*"));
     }
     private void openPlayer(JSONObject item) {
@@ -327,14 +342,18 @@ public class MainActivity extends Activity {
         if("wco".equals(item.optString("provider"))) {
             try { item=new JSONObject(item.toString()).put("provider","wcostream").put("url",item.optString("url").replace("www.wco.tv","www.wcostream.tv")); }catch(Exception e){return;}
         }
-        openAttempt(item);
+        JSONObject first=item;int ticket=++playSession;
+        framePlaying=false;frameReady=false;waitingPausedFrame=false;closingPlayer=false;playbackConfirmed=false;
+        homeView.evaluateJavascript("window.refreshThumbnails&&window.refreshThumbnails()",null);
+        resumeThumbnails.invalidate(requestedEpisode,() -> {if(!closed&&ticket==playSession)openAttempt(first);});
     }
     private void openAttempt(JSONObject item) {
         String url=item.optString("url");
         if (!validProviderUrl(url)) { toast("Choose a supported source"); return; }
-        playSession++;attemptStarted=lastPlaybackAt=SystemClock.elapsedRealtime();lastPosition=-1;
+        playSession++;attemptStarted=lastPlaybackAt=SystemClock.elapsedRealtime();lastPosition=-1;lastDuration=0;frameReady=false;
         playbackConfirmed=false;metadataSeen=false;mediaPaused=false;resolving=false;
         currentItem=item; blocker.blocked.set(0);
+        playPauseButton.setVisibility(View.GONE);
         JSONObject metadata=requestedEpisode==null?item:requestedEpisode;
         voice.begin(metadata.optString("title","Cartoon Watch"),metadata.optString("seriesTitle"),0,(long)(item.optDouble("resumeSeconds",0)*1000));
         configureFrameGuard();
@@ -382,21 +401,44 @@ public class MainActivity extends Activity {
         main.postDelayed(fallbackDeadline,10000);
     }
     private void closePlayer() {
+        if(closingPlayer)return;
+        closingPlayer=true;int session=playSession;
+        captureResumeFrame(() -> {if(closingPlayer&&session==playSession)finishClosePlayer();});
+    }
+    private void finishClosePlayer() {
+        if(playbackConfirmed&&lastPosition>=0)recordProgress(lastPosition,lastDuration,true);
         voice.deactivate();
-        playSession++;requestedEpisode=null;resolving=false;
+        playPauseButton.setVisibility(View.GONE);main.removeCallbacks(hidePlaybackButton);
+        playSession++;requestedEpisode=null;resolving=false;framePlaying=false;closingPlayer=false;
         pendingAttempt=null;if(resolutionTask!=null)resolutionTask.cancel(true);
         if(fallbackDeadline!=null)main.removeCallbacks(fallbackDeadline);
         hideFullscreen();
         player.evaluateJavascript("window.CWPlayerTick&&window.CWPlayerTick()",null);
         player.loadUrl("about:blank"); playerPanel.setVisibility(View.GONE);
         homeView.setVisibility(View.VISIBLE); homeView.requestFocus();
+        homeView.evaluateJavascript("window.refreshThumbnails&&window.refreshThumbnails()",null);
         homeView.evaluateJavascript("window.refreshState&&window.refreshState()",null);
         getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
+    private void captureResumeFrame(Runnable copied) {
+        captureResumeFrame(copied,false);
+    }
+    private void captureResumeFrame(Runnable copied,boolean keepActive) {
+        if(!playbackConfirmed||!frameReady||requestedEpisode==null||lastPosition<0||playerPanel.getVisibility()!=View.VISIBLE) {if(copied!=null)copied.run();return;}
+        resumeThumbnails.capture(getWindow(),fullscreen==null?player:fullscreen,requestedEpisode,lastPosition,keepActive,copied,() -> {
+            if(!closed)homeView.evaluateJavascript("window.refreshThumbnails&&window.refreshThumbnails()",null);
+        });
+    }
+    private void showPlaybackButton(boolean paused) {
+        if(playPauseButton==null||closingPlayer)return;
+        playPauseButton.setActivated(paused);playPauseButton.setText(paused?"▶  Resume":"Ⅱ  Pause");playPauseButton.setContentDescription(paused?"Resume video":"Pause video");playPauseButton.setVisibility(View.VISIBLE);playPauseButton.bringToFront();playPauseButton.requestFocus();
+        main.removeCallbacks(hidePlaybackButton);if(!paused&&!toolbarVisible)main.postDelayed(hidePlaybackButton,3000);
+    }
     private void showToolbar(boolean visible) {
+        if(playPauseButton!=null)playPauseButton.setVisibility(View.GONE);
         toolbarVisible=visible; toolbar.setVisibility(visible?View.VISIBLE:View.GONE);
         if(cursor!=null&&visible) cursor.setVisibility(View.INVISIBLE);
-        if(visible) toolbar.getChildAt(0).requestFocus(); else player.requestFocus();
+        if(visible) {if(playbackConfirmed&&!cursorMode)showPlaybackButton(mediaPaused);else toolbar.getChildAt(0).requestFocus();} else player.requestFocus();
     }
     private void hideFullscreen() {
         if(fullscreen!=null) {
@@ -421,21 +463,32 @@ public class MainActivity extends Activity {
     }
 
     private final class PlayerEvents {
+        @JavascriptInterface public void quality(String session,int width,int height) {
+            if(width<1||height<1||width>8192||height>4320)return;
+            main.post(() -> {if(String.valueOf(playSession).equals(session)&&currentItem!=null)playerStatus.setText(width+" × "+height+(height>=2160?" · UHD":""));});
+        }
         @JavascriptInterface public void promotionClosed() { blocker.blocked.incrementAndGet(); }
         @JavascriptInterface public void introSkipped() { main.post(() -> playerStatus.setText("Intro skipped")); }
 
-        @JavascriptInterface public void report(String session,double position,double duration,boolean paused,boolean played) {
+        @JavascriptInterface public void report(String session,double position,double duration,boolean paused,boolean played,boolean ready) {
             if(Double.isNaN(position)||Double.isInfinite(position)||Double.isNaN(duration)||Double.isInfinite(duration)||position<0||duration<=0||duration>86400||position>duration+5) return;
             main.post(() -> {
                 if(!String.valueOf(playSession).equals(session)||currentItem==null||playerPanel.getVisibility()!=View.VISIBLE) return;
                 metadataSeen=true;
                 long now=SystemClock.elapsedRealtime();
+                boolean wasConfirmed=playbackConfirmed,wasPaused=mediaPaused;
                 if((!paused && position>0.1) || played) {
                     if(!playbackConfirmed || mediaPaused || Math.abs(position-lastPosition)>0.05)lastPlaybackAt=now;
                     playbackConfirmed=true;playbackMessage.setVisibility(View.GONE);
                 }
-                lastPosition=position;mediaPaused=paused && playbackConfirmed;
+                boolean moved=lastPosition>=0&&Math.abs(position-lastPosition)>.5;
+                lastPosition=position;lastDuration=duration;mediaPaused=paused && playbackConfirmed;frameReady=ready;
+                if(playbackConfirmed&&!closingPlayer) {
+                    if(paused) {if(framePlaying||moved)waitingPausedFrame=true;framePlaying=false;if(waitingPausedFrame&&ready){waitingPausedFrame=false;captureResumeFrame(null);}}
+                    else if(!framePlaying) {framePlaying=true;waitingPausedFrame=false;resumeThumbnails.invalidate(requestedEpisode,null);}
+                }
                 voice.update((long)(position*1000),(long)(duration*1000),paused);
+                if(!cursorMode&&playbackConfirmed&&(!wasConfirmed||wasPaused!=mediaPaused))showPlaybackButton(mediaPaused);
                 if(!paused) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 if(paused!=lastSavedPaused || (!paused && now-lastProgressSave>9000)) { lastProgressSave=now;lastSavedPaused=paused;recordProgress(position,duration,paused); }
@@ -462,6 +515,26 @@ public class MainActivity extends Activity {
                 respond(callbackId,new JSONObject().put("ok",true));return;
             }
             if("getState".equals(action)) { respond(callbackId,new JSONObject(state.toString())); return; }
+            if("artwork".equals(action)) {
+                io.execute(() -> {
+                    try {
+                        JSONArray input=args.optJSONArray("items"),remaining=new JSONArray(),frames=new JSONArray();
+                        if(input!=null)for(int i=0;i<input.length()&&i<12;i++) {
+                            JSONObject item=input.optJSONObject(i);if(item==null)continue;
+                            String frame=resumeThumbnails.image(item);
+                            if(frame.isEmpty())remaining.put(item);else frames.put(new JSONObject().put("url",item.optString("url")).put("image",frame).put("imageSource","Resume frame").put("resumeFrame",true));
+                        }
+                        JSONObject result=artwork.lookup(remaining);JSONArray found=result.getJSONArray("items");for(int i=0;i<frames.length();i++)found.put(frames.get(i));
+                        if(args.optBoolean("debug"))result.put("frameDebug",new JSONObject().put("ready",frameReady).put("playing",framePlaying).put("confirmed",playbackConfirmed).put("closing",closingPlayer).put("kind",requestedEpisode==null?"":requestedEpisode.optString("kind")).put("snapshot",resumeThumbnails.diagnostics()));
+                        main.post(() -> respond(callbackId,result));
+                    }
+                    catch(Exception e){main.post(() -> respondError(callbackId,"Artwork is temporarily unavailable."));}
+                });return;
+            }
+            if("clearHistory".equals(action)) {
+                state.put("history",new JSONArray());persist();
+                resumeThumbnails.clear(() -> {if(!closed)respond(callbackId,new JSONObject());});return;
+            }
             if("saveState".equals(action)) {
 
                 for(String key:new String[]{"favorites","history","settings"}) if(args.has(key)) state.put(key,args.get(key));
@@ -563,7 +636,11 @@ public class MainActivity extends Activity {
             if("forwardBy".equals(command))command="forward";
             if("backward".equals(command))command="rewind";
             if(!command.matches("play|pause|toggle|seek|forward|rewind"))return false;
-            player.evaluateJavascript("window.CWControl&&window.CWControl("+JSONObject.quote(command)+","+Math.max(0,Math.min(86400,value))+")",null);
+            String script="window.CWControl&&window.CWControl("+JSONObject.quote(command)+","+Math.max(0,Math.min(86400,value))+")";int session=playSession;
+            Runnable dispatch=() -> {if(!closed&&session==playSession)player.evaluateJavascript(script,null);};
+            if(("play".equals(command)||"toggle".equals(command))&&mediaPaused) {framePlaying=true;resumeThumbnails.invalidate(requestedEpisode,dispatch);}
+            else if("seek".equals(command)||"forward".equals(command)||"rewind".equals(command)) {frameReady=false;resumeThumbnails.invalidate(requestedEpisode,dispatch);}
+            else dispatch.run();
         }
         return true;
     }
@@ -596,18 +673,25 @@ public class MainActivity extends Activity {
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         boolean watching=playerPanel!=null&&playerPanel.getVisibility()==View.VISIBLE;
         int key=event.getKeyCode();
+        if(watching&&playbackConfirmed&&!toolbarVisible&&(key==KeyEvent.KEYCODE_DPAD_CENTER||key==KeyEvent.KEYCODE_ENTER)&&(!cursorMode||playPauseButton.getVisibility()==View.VISIBLE)) {
+            if(event.getAction()==KeyEvent.ACTION_DOWN&&event.getRepeatCount()==0){if(playPauseButton.getVisibility()!=View.VISIBLE)showPlaybackButton(mediaPaused);playPauseButton.performClick();}return true;
+        }
         if(watching&&event.getAction()==KeyEvent.ACTION_DOWN) {
             if(key==KeyEvent.KEYCODE_MENU) { showToolbar(!toolbarVisible); return true; }
             String command=key==KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE?"toggle":key==KeyEvent.KEYCODE_MEDIA_PLAY?"play":key==KeyEvent.KEYCODE_MEDIA_PAUSE||key==KeyEvent.KEYCODE_MEDIA_STOP?"pause":key==KeyEvent.KEYCODE_MEDIA_FAST_FORWARD?"forward":key==KeyEvent.KEYCODE_MEDIA_REWIND?"rewind":null;
             if(command!=null) {
-                player.evaluateJavascript("window.CWControl&&window.CWControl('"+command+"')",handled -> {
+                int session=playSession;
+                Runnable dispatch=() -> {if(closed||session!=playSession)return;player.evaluateJavascript("window.CWControl&&window.CWControl('"+command+"')",handled -> {
                     if(!"true".equals(handled) && !"play".equals(command) && !"pause".equals(command)) {
 
                         int fallback="toggle".equals(command)?KeyEvent.KEYCODE_SPACE:"forward".equals(command)?KeyEvent.KEYCODE_DPAD_RIGHT:KeyEvent.KEYCODE_DPAD_LEFT;
                         player.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN,fallback));
                         player.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP,fallback));
                     }
-                }); return true;
+                });};
+                if(("play".equals(command)||"toggle".equals(command))&&mediaPaused){framePlaying=true;resumeThumbnails.invalidate(requestedEpisode,dispatch);}
+                else if("forward".equals(command)||"rewind".equals(command)){frameReady=false;resumeThumbnails.invalidate(requestedEpisode,dispatch);}
+                else dispatch.run();return true;
             }
             if(fullscreen==null&&!toolbarVisible&&cursorMode) {
                 float step=dp(event.getRepeatCount()>6?35:18);
@@ -639,11 +723,13 @@ public class MainActivity extends Activity {
         homeView.evaluateJavascript("window.handleBack?window.handleBack():false",result -> { if(!"true".equals(result)) super.onBackPressed(); });
     }
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent);setIntent(intent);if(voice!=null)voice.handleIntent(intent); }
-    @Override protected void onPause() { foreground=false;super.onPause(); }
-    @Override protected void onStop() { if(voice!=null)voice.setForeground(false);if(player!=null)player.onPause();super.onStop(); }
+    @Override protected void onPause() { if(foreground&&!closingPlayer){captureResumeFrame(null,framePlaying&&!mediaPaused);if(playbackConfirmed&&lastPosition>=0)recordProgress(lastPosition,lastDuration,true);}foreground=false;super.onPause(); }
+    @Override protected void onStop() { framePlaying=false;if(voice!=null)voice.setForeground(false);if(player!=null)player.onPause();if(resumeThumbnails!=null&&requestedEpisode!=null)resumeThumbnails.settleEpisode(requestedEpisode);super.onStop(); }
     @Override protected void onResume() {
+        boolean continued=framePlaying&&!mediaPaused;
         super.onResume();foreground=true;attemptStarted=lastPlaybackAt=SystemClock.elapsedRealtime();mediaPaused=playbackConfirmed;
         if(voice!=null)voice.setForeground(true);
+        if(continued&&requestedEpisode!=null)resumeThumbnails.invalidate(requestedEpisode,null);
         if(player!=null) {
             player.onResume();
             if(pendingAttempt!=null){JSONObject item=pendingAttempt;pendingAttempt=null;openAttempt(item);}
@@ -652,7 +738,7 @@ public class MainActivity extends Activity {
         }
         immersive();
     }
-    @Override protected void onDestroy() { closed=true;if(voice!=null)voice.close();main.removeCallbacksAndMessages(null);io.shutdownNow();fallbackIo.shutdownNow();if(catalogBrowser!=null)catalogBrowser.destroy();player.destroy();homeView.destroy();super.onDestroy(); }
+    @Override protected void onDestroy() { closed=true;if(voice!=null)voice.close();main.removeCallbacksAndMessages(null);io.shutdownNow();fallbackIo.shutdownNow();if(artwork!=null)artwork.close();if(resumeThumbnails!=null)resumeThumbnails.close();if(catalogBrowser!=null)catalogBrowser.destroy();player.destroy();homeView.destroy();super.onDestroy(); }
     private final class Cursor extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         Cursor() { super(MainActivity.this); setFocusable(false); setClickable(false); }

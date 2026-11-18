@@ -2,6 +2,7 @@
   'use strict';
   var service = localStorage.getItem('cartoonWatchService') || '';
   var stateKey = 'cartoonWatchTVState';
+  var frameKey = 'cartoonWatchEpisodeFrames';
   var active = null;
   var serial = 0;
   var priorFocus = null;
@@ -11,6 +12,7 @@
   root.innerHTML = '<video id="cw-tv-video" controls playsinline tabindex="0"></video><div id="cw-tv-controls"><button data-command="back">Back to catalog</button><button data-command="toggle">Play / pause</button><button data-command="rewind">Back 10 seconds</button><button data-command="forward">Forward 10 seconds</button><button data-command="intro" hidden>Skip intro</button><button data-command="captions">Captions</button><button data-command="retry">Retry</button></div><div id="cw-tv-status" role="status"></div>';
   document.body.appendChild(root);
   var video = document.getElementById('cw-tv-video');
+  video.crossOrigin = 'anonymous';
   var controls = document.getElementById('cw-tv-controls');
   var status = document.getElementById('cw-tv-status');
   var introButton = controls.querySelector('[data-command="intro"]');
@@ -38,6 +40,36 @@
   function state() {
     try { return JSON.parse(localStorage.getItem(stateKey) || 'null') || { favorites: [], history: [], settings: { provider: 'wco', adBlock: true } }; }
     catch (_) { return { favorites: [], history: [], settings: { provider: 'wco', adBlock: true } }; }
+  }
+  function frames() {
+    try { var raw = localStorage.getItem(frameKey) || '[]'; if (raw.length > 1048576) return []; var list = JSON.parse(raw); return Array.isArray(list) ? list.filter(function (item) { return item && typeof item.url === 'string' && item.url.length < 2048 && typeof item.image === 'string' && /^data:image\/jpeg;base64,[a-zA-Z0-9+/=]+$/.test(item.image) && item.image.length < 65536; }).slice(0, 64) : []; }
+    catch (_) { return []; }
+  }
+  function saveFrames(list) {
+    var raw; while (list.length > 64 || (raw = JSON.stringify(list)).length > 1048576) list.pop();
+    while (true) { try { localStorage.setItem(frameKey, raw); return; } catch (_) { if (!list.length) { try { localStorage.removeItem(frameKey); } catch (ignored) {} return; } list.pop(); raw = JSON.stringify(list); } }
+  }
+  function forgetFrame(url) { saveFrames(frames().filter(function (item) { return item.url !== url; })); if (active) active.frameSaved = false; }
+  function captureFrame() {
+    if (!active || active.native || !active.media || root.hidden || video.readyState < 2 || !video.videoWidth || !video.videoHeight || !video.played.length || !isFinite(video.currentTime) || active.payload.kind === 'series' || active.payload.kind === 'movie') return;
+    if (active.frameSaved && Math.abs(active.framePosition - video.currentTime) < .01) return;
+    try {
+      var canvas = document.createElement('canvas'); canvas.width = 192; canvas.height = 108; var context = canvas.getContext('2d');
+      var scale = Math.min(192 / video.videoWidth, 108 / video.videoHeight), width = video.videoWidth * scale, height = video.videoHeight * scale;
+      context.fillStyle = '#000'; context.fillRect(0, 0, 192, 108); context.drawImage(video, (192 - width) / 2, (108 - height) / 2, width, height);
+      var image = canvas.toDataURL('image/jpeg', .55); if (image.length > 65536) return;
+      var list = frames().filter(function (item) { return item.url !== active.payload.url; }); list.unshift({ url: active.payload.url, image: image, position: video.currentTime, updatedAt: Date.now() }); saveFrames(list); active.frameSaved = true; active.framePosition = video.currentTime;
+    } catch (_) {}
+  }
+  function artwork(payload) {
+    var saved = frames(), found = [], pending = [];
+    (Array.isArray(payload.items) ? payload.items : []).slice(0, 12).forEach(function (item) {
+      var frame = item.kind !== 'series' && item.kind !== 'movie' && saved.find(function (entry) { return entry.url === item.url; });
+      if (frame) found.push({ url: item.url, image: frame.image, resumeFrame: true, imageSource: 'Resume frame', imageSourceUrl: '', imageAttribution: 'Saved from your last paused position' });
+      else { var value = Object.assign({}, item); if (/^data:/.test(value.image || '')) value.image = ''; pending.push(value); }
+    });
+    if (!pending.length) return Promise.resolve({ items: found, pending: [], retryAfter: 1000 });
+    return call('/api/artwork', { items: pending }).then(function (result) { return { items: found.concat((result.items || []).map(function (item) { return Object.assign({ resumeFrame: false }, item); })), pending: result.pending || [], retryAfter: result.retryAfter || 1000 }; });
   }
   function callback(id, value) { if (window.onNativeResult) window.onNativeResult(id, JSON.stringify(value)); }
   function call(path, payload) {
@@ -84,6 +116,7 @@
   function saveProgress() {
     if (!active || !isFinite(duration()) || !isFinite(position())) return;
     var entry = Object.assign({}, active.payload, { currentTime: position(), position: position(), duration: duration(), watchedAt: Date.now() });
+    if (/^data:/.test(entry.image || '')) entry.image = ''; delete entry.resumeFrame;
     var saved = state(); saved.history = (saved.history || []).filter(function (item) { return item.url !== entry.url; }); saved.history.unshift(entry); saved.history = saved.history.slice(0, 80);
     localStorage.setItem(stateKey, JSON.stringify(saved));
     if (window.onPlaybackProgress) window.onPlaybackProgress(entry);
@@ -101,7 +134,7 @@
     } catch (_) {}
   }
   function closePlayer() {
-    serial++; saveProgress(); stopPlayback(); root.hidden = true; active = null;
+    captureFrame(); serial++; saveProgress(); stopPlayback(); root.hidden = true; active = null;
     if (navigator.mediaSession) { try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch (_) {} }
     if (priorFocus && document.contains(priorFocus)) priorFocus.focus();
     if (window.refreshState) window.refreshState();
@@ -169,9 +202,10 @@
   }
   function startPlayer(payload) {
     var attempt = ++serial;
-    if (root.hidden) priorFocus = document.activeElement; saveProgress(); stopPlayback(); active = { payload: payload, media: null }; root.hidden = false; status.textContent = 'Starting episode…'; controls.hidden = false;
+    if (root.hidden) priorFocus = document.activeElement; captureFrame(); saveProgress(); stopPlayback(); active = { payload: payload, media: null }; forgetFrame(payload.url); root.hidden = false; status.textContent = 'Starting episode…'; controls.hidden = false;
     controls.querySelector('[data-command="toggle"]').focus();
-    return call('/api/play', payload).then(function (media) {
+    var outbound = Object.assign({}, payload); delete outbound.image; delete outbound.resumeFrame;
+    return call('/api/play', outbound).then(function (media) {
       if (attempt !== serial) return { ok: true, cancelled: true };
       var url = streamURL(media.streamUrl);
       if (!url) throw new Error('The companion returned an invalid playback address.');
@@ -211,8 +245,8 @@
     if (resume > 0 && isFinite(video.duration) && resume < video.duration - 2) video.currentTime = resume;
     command('play');
   });
-  video.addEventListener('playing', function () { status.textContent = ''; mediaSession(); });
-  video.addEventListener('pause', function () { saveProgress(); mediaSession(); });
+  video.addEventListener('playing', function () { if (active) forgetFrame(active.payload.url); status.textContent = ''; mediaSession(); });
+  video.addEventListener('pause', function () { captureFrame(); saveProgress(); mediaSession(); });
   video.addEventListener('timeupdate', tick);
   video.addEventListener('ended', saveProgress);
   video.addEventListener('error', function () { if (active && active.media) status.textContent = 'Playback could not start. Choose Retry or return to the catalog.'; });
@@ -228,7 +262,9 @@
     var payload;
     try { payload = JSON.parse(raw || '{}'); } catch (_) { callback(id, { error: 'Unreadable app request.' }); return; }
     if (action === 'getState') { callback(id, state()); return; }
-    if (action === 'saveState') { localStorage.setItem(stateKey, JSON.stringify(payload)); callback(id, { ok: true }); return; }
+    if (action === 'ready') { callback(id, { ok: true }); return; }
+    if (action === 'saveState') { if (Array.isArray(payload.history) && !payload.history.length) { try { localStorage.removeItem(frameKey); } catch (_) {} } localStorage.setItem(stateKey, JSON.stringify(payload)); callback(id, { ok: true }); return; }
+    if (action === 'clearHistory') { var clean = state(); clean.history = []; localStorage.setItem(stateKey, JSON.stringify(clean)); try { localStorage.removeItem(frameKey); } catch (_) {} callback(id, { ok: true }); return; }
     if (action === 'settings') { var saved = state(); saved.settings = Object.assign({}, saved.settings, payload); localStorage.setItem(stateKey, JSON.stringify(saved)); callback(id, { ok: true }); return; }
     if (action === 'exit') { platformExit(); callback(id, { ok: true }); return; }
     if (action === 'openSource') { callback(id, { error: 'The companion automatically tries fallback players. Return to the WCO catalog to choose a title.' }); return; }
@@ -237,6 +273,7 @@
       var query = '?q=' + encodeURIComponent(payload.query || '') + '&category=' + encodeURIComponent(payload.category || 'all') + '&sort=' + encodeURIComponent(payload.sort || 'az') + '&offset=' + Math.max(0, Number(payload.offset) || 0) + '&limit=' + Math.max(1, Math.min(120, Number(payload.limit) || 60));
       task = call('/api/catalog' + query);
     } else if (action === 'details') task = call('/api/details?url=' + encodeURIComponent(payload.url || ''));
+    else if (action === 'artwork') task = artwork(payload);
     else if (action === 'play') task = startPlayer(payload);
     else task = Promise.reject(new Error('This action is unavailable.'));
     task.then(function (result) { callback(id, result); }).catch(function (error) { callback(id, { error: error.message }); if (!service) showSetup(); });
