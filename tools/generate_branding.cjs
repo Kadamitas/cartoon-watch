@@ -53,8 +53,8 @@ function write(file, data) {
 (async () => {
     write("app/src/main/assets/brand.svg", svg(scene(108, 108, true), 108, 108));
     write("branding/banner.svg", svg(scene(320, 180), 320, 180));
-    write("app/src/main/res/drawable/app_icon.xml", vector(scene(108, 108, true), 108, 108));
-    write("app/src/main/res/drawable/tv_banner.xml", vector(scene(320, 180), 320, 180));
+    write("app/src/main/res/drawable/cw_launcher.xml", vector(scene(108, 108, true), 108, 108));
+    write("app/src/main/res/drawable/cw_banner.xml", vector(scene(320, 180), 320, 180));
     const edge = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
     const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || (process.platform === "win32" && fs.existsSync(edge) ? edge : undefined) });
     try {
